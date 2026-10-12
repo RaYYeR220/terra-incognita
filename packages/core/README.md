@@ -45,6 +45,7 @@ Everything exported from the package root except the `render` namespace is integ
 | `inZone(p, zone)` | stage 0: true; otherwise `dot(p, center) ≥ ZONE_COS_E18[stage − 1]` |
 | `zoneStageAt(now, startsAt, interval)` | `min(8, floor((now − startsAt) / interval))`, 0 before the start or without an interval |
 | `normalize(v)` | each component `v · 1e9 / isqrt(\|v\|²)`, rounded half away from zero |
+| `canonical(v)` | `normalize(v · 1e9)`: the form in which the program stores every position it is given |
 | `unitVectorFromDigest(d)` | rejection sampling, see below |
 | `locationFromRandomness(r)` | `unitVectorFromDigest(sha256(r ‖ "loc"))` |
 | `saltFromRandomness(r)` | `sha256(r ‖ "salt")` |

@@ -10,11 +10,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./render": {
       "types": "./dist/render.d.ts",
-      "import": "./dist/render.js"
+      "import": "./dist/render.js",
+      "default": "./dist/render.js"
     },
     "./vectors/geometry.json": "./vectors/geometry.json"
   },

@@ -3,6 +3,7 @@ export * from './types.js';
 export {
   bandBetween,
   bandOf,
+  canonical,
   chordE9,
   dot,
   fromLatLon,

@@ -45,6 +45,18 @@ export function normalize(v: readonly [bigint, bigint, bigint]): Vec3 {
 }
 
 /**
+ * The form in which the program stores a position: `normalize(v · 1e9)`.
+ *
+ * `isUnit` accepts several spellings of nearly the same direction, and a longer spelling scores
+ * a larger dot product. The program therefore re-normalises every position it is given, and
+ * anything that predicts what it stores has to do the same. Stable: `canonical(canonical(v))`
+ * equals `canonical(v)`.
+ */
+export function canonical(v: Vec3): Vec3 {
+  return normalize([BigInt(v[0]) * SCALE_N, BigInt(v[1]) * SCALE_N, BigInt(v[2]) * SCALE_N]);
+}
+
+/**
  * Unit vector for a latitude and longitude in degrees.
  *
  * This is the one place where floating point feeds the exact layer. The program never needs it:

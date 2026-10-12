@@ -13,6 +13,7 @@ import {
   ZONE_SIN_E9,
   bandBetween,
   bandOf,
+  canonical,
   chordE9,
   dot,
   fromLatLon,
@@ -348,6 +349,32 @@ describe('normalize', () => {
       const v = [0, 0, 0].map(() => BigInt(Math.floor((2 * rand() - 1) * 1e9)) * 1_000_000_007n);
       const out = normalize(v as [bigint, bigint, bigint]);
       expect(isUnit(out)).toBe(true);
+    }
+  });
+});
+
+describe('canonical', () => {
+  it('removes the length slack the unit test allows', () => {
+    const target = fromLatLon(10, 20);
+    const exact: Vec3 = [600_000_000, 0, 800_000_000];
+    const long: Vec3 = [600_000_001, 0, 800_000_001];
+    const short: Vec3 = [599_999_999, 0, 799_999_999];
+    for (const v of [exact, long, short]) expect(isUnit(v)).toBe(true);
+    expect(dot(long, target)).toBeGreaterThan(dot(exact, target));
+    expect(canonical(exact)).toEqual(exact);
+    expect(canonical(long)).toEqual(exact);
+    expect(canonical(short)).toEqual(exact);
+    expect(bandBetween(canonical(long), target)).toBe(bandBetween(exact, target));
+  });
+
+  it('is stable and moves a unit vector by at most one unit per component', () => {
+    const rand = mulberry32(21);
+    for (let i = 0; i < 3000; i += 1) {
+      const v = randomPoint(rand);
+      const c = canonical(v);
+      expect(isUnit(c)).toBe(true);
+      expect(canonical(c)).toEqual(c);
+      for (let k = 0; k < 3; k += 1) expect(Math.abs((c[k] as number) - (v[k] as number))).toBeLessThanOrEqual(1);
     }
   });
 });
