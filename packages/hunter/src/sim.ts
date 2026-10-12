@@ -6,6 +6,7 @@ import {
   PIN_RING_SIZE,
   PROBE_COOLDOWN_SECS,
   bandOf,
+  canonical,
   commitment,
   dot,
   isUnit,
@@ -56,7 +57,13 @@ function yieldToTasks(): Promise<void> {
 
 /**
  * A hunt held in memory that enforces the rules of the program: flight time, the probe cooldown
- * and cap, the zone schedule, the strike radius and closest-wins at the deadline.
+ * (which starts at embark), the probe cap, the zone schedule, the strike radius and
+ * closest-wins at the deadline. Positions are stored in canonical form, as the program stores
+ * them.
+ *
+ * A strike is recorded privately and becomes public at the next tick, never within the probe
+ * that made it. The simulator ticks before every action and every read, as a crank that ticks
+ * every slot would.
  *
  * Time is virtual and counted in whole seconds, like the on-chain clock. It moves only through
  * `advanceTo`, a client's `sleepUntil`, or the scheduler in `play`.
@@ -85,6 +92,7 @@ export class SimHunt {
   private winner: string | null = null;
   private endedAt: number | null = null;
   private best: { dot: bigint; player: string; ts: number } | null = null;
+  private strike: { player: string; ts: number } | null = null;
 
   private sleepers: Sleeper[] = [];
   private sleeperSeq = 0;
@@ -131,6 +139,7 @@ export class SimHunt {
     };
   }
 
+  /** Puts the ship on the board. The sounding gear starts cold: the first probe waits out the cooldown. */
   embark(player: string, start: Vec3): void {
     this.tick();
     const log = this.logbooks.get(player);
@@ -138,36 +147,39 @@ export class SimHunt {
     if (this.status !== HuntStatus.Live) throw new HuntError('NotLive');
     if (this.ships.some((ship) => ship.owner === player)) throw new HuntError('AlreadyEmbarked');
     if (!isUnit(start)) throw new HuntError('InvalidPosition');
+    const at = canonical(start);
     this.ships.push({
       owner: player,
-      from: start,
-      to: start,
+      from: at,
+      to: at,
       departTs: this.clock,
       arriveTs: this.clock,
       probes: 0,
-      lastProbeTs: 0,
+      lastProbeTs: this.clock,
       embarked: true,
     });
   }
 
   setCourse(player: string, dest: Vec3): void {
     this.tick();
-    const ship = this.shipOf(player);
     if (this.status !== HuntStatus.Live) throw new HuntError('NotLive');
+    const ship = this.shipOf(player);
     if (!isUnit(dest)) throw new HuntError('InvalidPosition');
     if (this.clock < ship.arriveTs) throw new HuntError('InFlight');
+    const to = canonical(dest);
     ship.from = ship.to;
-    ship.to = dest;
+    ship.to = to;
     ship.departTs = this.clock;
-    ship.arriveTs = this.clock + travelSecs(ship.from, dest, this.speedKms);
+    ship.arriveTs = this.clock + travelSecs(ship.from, to, this.speedKms);
   }
 
+  /** Checks in the order of the program: hunt state, ship, probe cap, flight, cooldown. */
   probe(player: string): LogEntry {
     this.tick();
-    const ship = this.shipOf(player);
     if (this.status !== HuntStatus.Live) throw new HuntError('NotLive');
-    if (this.clock < ship.arriveTs) throw new HuntError('InFlight');
+    const ship = this.shipOf(player);
     if (ship.probes >= MAX_PROBES) throw new HuntError('ProbeLimit');
+    if (this.clock < ship.arriveTs) throw new HuntError('InFlight');
     if (this.clock - ship.lastProbeTs < PROBE_COOLDOWN_SECS) throw new HuntError('Cooldown');
 
     const d = dot(ship.to, this.location);
@@ -183,17 +195,23 @@ export class SimHunt {
     if (this.best === null || d > this.best.dot) {
       this.best = { dot: d, player, ts: this.clock };
     }
-    if (entry.band === 0) {
-      this.status = HuntStatus.Struck;
-      this.winner = player;
-      this.endedAt = this.clock;
-    }
+    // Only the first strike counts, and nobody learns of it before the next tick.
+    if (entry.band === 0 && this.strike === null) this.strike = { player, ts: this.clock };
     return { ...entry };
   }
 
-  /** Applies everything the clock implies: the zone stage and the deadline. */
+  /**
+   * Applies everything the clock implies, one rule after the other as the program's tick does:
+   * a recorded strike ends the hunt, then the deadline, then the zone stage.
+   */
   tick(): void {
     if (this.status !== HuntStatus.Live) return;
+    if (this.strike) {
+      this.status = HuntStatus.Struck;
+      this.winner = this.strike.player;
+      this.endedAt = this.strike.ts;
+      return;
+    }
     const at = Math.min(this.clock, this.deadline);
     const stage = zoneStageAt(at, this.startsAt, this.zoneIntervalSecs);
     if (stage > this.zone.stage) this.zone = zoneAt(this.location, this.zoneSeed, stage);
@@ -267,8 +285,8 @@ export class SimHunt {
   }
 
   /** The hidden state, for tests and benchmarks. A real hunt has no such door. */
-  peek(): { location: Vec3; salt: Uint8Array; zoneSeed: Uint8Array } {
-    return { location: this.location, salt: this.salt, zoneSeed: this.zoneSeed };
+  peek(): { location: Vec3; salt: Uint8Array; zoneSeed: Uint8Array; strike: { player: string; ts: number } | null } {
+    return { location: this.location, salt: this.salt, zoneSeed: this.zoneSeed, strike: this.strike ? { ...this.strike } : null };
   }
 
   /**

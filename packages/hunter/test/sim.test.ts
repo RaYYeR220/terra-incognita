@@ -4,6 +4,7 @@ import {
   PIN_RING_SIZE,
   auditHunt,
   bandBetween,
+  canonical,
   commitment,
   fromLatLon,
   inZone,
@@ -68,7 +69,7 @@ describe('joining and embarking', () => {
     const start = fromLatLon(10, 20);
     sim.embark('a', start);
     expect(sim.publicState().ships).toEqual([
-      { owner: 'a', from: start, to: start, departTs: T0, arriveTs: T0, probes: 0, lastProbeTs: 0, embarked: true },
+      { owner: 'a', from: start, to: start, departTs: T0, arriveTs: T0, probes: 0, lastProbeTs: T0, embarked: true },
     ]);
   });
 
@@ -149,33 +150,51 @@ describe('probing', () => {
     const { location } = sim.peek();
     sim.join('a');
     sim.join('b');
-    const pos = pointAt(location, 1, 700);
+    const pos = canonical(pointAt(location, 1, 700));
     sim.embark('a', pos);
+    sim.advance(3);
     const entry = sim.probe('a');
-    expect(entry).toEqual({ pos, band: bandBetween(pos, location), ts: T0 });
+    expect(entry).toEqual({ pos, band: bandBetween(pos, location), ts: T0 + 3 });
     expect(entry.band).toBe(3);
     expect(sim.logbook('a')).toEqual([entry]);
     expect(sim.logbook('b')).toEqual([]);
 
     const state = sim.publicState();
-    expect(state.pins).toEqual([{ shipIndex: 0, pos, ts: T0 }]);
+    expect(state.pins).toEqual([{ shipIndex: 0, pos, ts: T0 + 3 }]);
     expect(Object.keys(state.pins[0]!)).not.toContain('band');
     expect(state.ships[0]!.probes).toBe(1);
-    expect(state.ships[0]!.lastProbeTs).toBe(T0);
+    expect(state.ships[0]!.lastProbeTs).toBe(T0 + 3);
     expect(state.probesTotal).toBe(1);
   });
 
-  it('enforces the three second cooldown', () => {
+  it('enforces the three second cooldown, starting at embark', () => {
     const sim = newHunt();
     sim.join('a');
     sim.embark('a', antipode(sim.peek().location));
+    expect(code(() => sim.probe('a'))).toBe('Cooldown');
+    sim.advance(2);
+    expect(code(() => sim.probe('a'))).toBe('Cooldown');
+    sim.advance(1);
     sim.probe('a');
     expect(code(() => sim.probe('a'))).toBe('Cooldown');
     sim.advance(2);
     expect(code(() => sim.probe('a'))).toBe('Cooldown');
     sim.advance(1);
-    expect(sim.probe('a').ts).toBe(T0 + 3);
+    expect(sim.probe('a').ts).toBe(T0 + 6);
     expect(sim.logbook('a')).toHaveLength(2);
+  });
+
+  it('stores positions in canonical form', () => {
+    const sim = newHunt();
+    sim.join('a');
+    const long: Vec3 = [600_000_001, 0, 800_000_001];
+    expect(isUnit(long)).toBe(true);
+    sim.embark('a', long);
+    expect(sim.publicState().ships[0]!.to).toEqual([600_000_000, 0, 800_000_000]);
+    sim.setCourse('a', [0, 600_000_001, 800_000_001]);
+    expect(sim.publicState().ships[0]!.to).toEqual([0, 600_000_000, 800_000_000]);
+    sim.advance(30);
+    expect(sim.probe('a').pos).toEqual([0, 600_000_000, 800_000_000]);
   });
 
   it('stops a ship after 64 probes', () => {
@@ -183,9 +202,10 @@ describe('probing', () => {
     sim.join('a');
     sim.embark('a', antipode(sim.peek().location));
     for (let i = 0; i < MAX_PROBES; i += 1) {
-      sim.probe('a');
       sim.advance(3);
+      sim.probe('a');
     }
+    sim.advance(3);
     expect(sim.logbook('a')).toHaveLength(64);
     expect(code(() => sim.probe('a'))).toBe('ProbeLimit');
     expect(sim.publicState().ships[0]!.probes).toBe(64);
@@ -194,27 +214,28 @@ describe('probing', () => {
 
   it('keeps only the last 128 pins', () => {
     const sim = newHunt();
-    const far = antipode(sim.peek().location);
+    const far = canonical(antipode(sim.peek().location));
     for (const player of ['a', 'b', 'c']) {
       sim.join(player);
       sim.embark(player, far);
     }
     for (let i = 0; i < 50; i += 1) {
-      for (const player of ['a', 'b', 'c']) sim.probe(player);
       sim.advance(3);
+      for (const player of ['a', 'b', 'c']) sim.probe(player);
     }
     const { pins, probesTotal } = sim.publicState();
     expect(probesTotal).toBe(150);
     expect(pins).toHaveLength(PIN_RING_SIZE);
     // 150 pins were pushed; the first 22 fell off, so the oldest left is b's 8th probe.
-    expect(pins[0]).toEqual({ shipIndex: 1, pos: far, ts: T0 + 7 * 3 });
-    expect(pins[127]).toEqual({ shipIndex: 2, pos: far, ts: T0 + 49 * 3 });
+    expect(pins[0]).toEqual({ shipIndex: 1, pos: far, ts: T0 + 8 * 3 });
+    expect(pins[127]).toEqual({ shipIndex: 2, pos: far, ts: T0 + 50 * 3 });
   });
 
   it('hands out copies, not its own state', () => {
     const sim = newHunt();
     sim.join('a');
     sim.embark('a', antipode(sim.peek().location));
+    sim.advance(3);
     sim.probe('a');
     const state = sim.publicState();
     state.ships[0]!.probes = 99;
@@ -236,6 +257,8 @@ describe('strike', () => {
     sim.embark('b', pointAt(location, 4, 30));
     sim.advance(7);
     expect(sim.probe('a').band).toBe(0);
+    // Recorded, not yet public: the next tick promotes it.
+    expect(sim.peek().strike).toEqual({ player: 'a', ts: T0 + 7 });
     const state = sim.publicState();
     expect(state.status).toBe(HuntStatus.Struck);
     expect(state.winner).toBe('a');
@@ -246,11 +269,38 @@ describe('strike', () => {
     expect(code(() => sim.embark('c', location))).toBe('NotLive');
   });
 
+  it('lets the first strike stand when a rival strikes in the same slot', () => {
+    const sim = newHunt();
+    const { location } = sim.peek();
+    sim.join('a');
+    sim.join('b');
+    sim.embark('a', pointAt(location, 2, 10));
+    sim.embark('b', pointAt(location, 4, 10));
+    sim.advance(3);
+    sim.probe('b');
+    expect(sim.peek().strike?.player).toBe('b');
+    expect(code(() => sim.probe('a'))).toBe('NotLive');
+    expect(sim.publicState().winner).toBe('b');
+  });
+
+  it('beats the closest-sounding rule when the strike is ticked only after the deadline', () => {
+    const sim = newHunt({ durationSecs: 100 });
+    const { location } = sim.peek();
+    sim.join('a');
+    sim.embark('a', pointAt(location, 2, 10));
+    sim.advance(3);
+    expect(sim.probe('a').band).toBe(0);
+    sim.advance(500);
+    expect(sim.publicState().status).toBe(HuntStatus.Struck);
+    expect(sim.endTime).toBe(T0 + 3);
+  });
+
   it('does not end for a probe just outside', () => {
     const sim = newHunt();
     const { location } = sim.peek();
     sim.join('a');
     sim.embark('a', pointAt(location, 2, 50.1));
+    sim.advance(3);
     expect(sim.probe('a').band).toBe(1);
     expect(sim.publicState().status).toBe(HuntStatus.Live);
     expect(sim.endTime).toBeNull();
@@ -261,12 +311,14 @@ describe('deadline', () => {
   it('awards the closest sounding when nobody struck', () => {
     const sim = newHunt({ durationSecs: 100 });
     const { location } = sim.peek();
-    for (const [player, km] of [['a', 900], ['b', 300], ['c', 5000]] as const) {
+    const players = [['a', 900], ['b', 300], ['c', 5000]] as const;
+    for (const [player, km] of players) {
       sim.join(player);
       sim.embark(player, pointAt(location, 1, km));
-      sim.probe(player);
     }
-    sim.advance(99);
+    sim.advance(3);
+    for (const [player] of players) sim.probe(player);
+    sim.advance(96);
     expect(sim.publicState().status).toBe(HuntStatus.Live);
     sim.advance(1);
     const state = sim.publicState();
@@ -282,6 +334,7 @@ describe('deadline', () => {
     sim.join('b');
     sim.embark('a', pointAt(location, 0, 390));
     sim.embark('b', pointAt(location, 3, 380));
+    sim.advance(3);
     expect(sim.probe('a').band).toBe(2);
     expect(sim.probe('b').band).toBe(2);
     sim.advance(100);
@@ -295,6 +348,7 @@ describe('deadline', () => {
     sim.join('second');
     sim.embark('first', pos);
     sim.embark('second', pos);
+    sim.advance(3);
     sim.probe('first');
     sim.advance(10);
     sim.probe('second');
@@ -377,6 +431,7 @@ describe('reveal and audit', () => {
     sim.join('b');
     sim.embark('a', positions[0]!);
     sim.embark('b', positions[1]!);
+    sim.advance(3);
     sim.probe('a');
     sim.probe('b');
     expect(() => sim.reveal()).toThrow(HuntError);
@@ -405,11 +460,13 @@ describe('clients and the shared clock', () => {
     expect(client.player).toBe('a');
     await client.embark(antipode(sim.peek().location));
     expect(await client.now()).toBe(T0);
+    await expect(client.probe()).rejects.toMatchObject({ code: 'Cooldown' });
+    await client.sleepUntil(T0 + 3);
     const entry = await client.probe();
     expect(await client.getMyLogbook()).toEqual([entry]);
     await expect(client.probe()).rejects.toMatchObject({ code: 'Cooldown' });
-    await client.sleepUntil(T0 + 3);
-    expect(await client.now()).toBe(T0 + 3);
+    await client.sleepUntil(T0 + 6);
+    expect(await client.now()).toBe(T0 + 6);
     await client.setCourse(fromLatLon(0, 0));
     await expect(client.setCourse(fromLatLon(1, 1))).rejects.toBeInstanceOf(HuntError);
     expect((await client.getPublicState()).ships[0]!.to).toEqual(fromLatLon(0, 0));

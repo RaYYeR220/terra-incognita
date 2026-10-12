@@ -40,11 +40,12 @@ describe('runHunter', () => {
     const log = sim.logbook('a');
     const firstLeg = travelSecs(start, stops[0]!, 800);
     expect(log.map((entry) => entry.ts - T0)).toEqual([
-      0,
-      firstLeg,
+      // Embarking starts the cooldown, so even the first probe waits three seconds.
+      3,
+      3 + firstLeg,
       // 10 km takes one second to fly, but the cooldown holds the probe back.
-      firstLeg + 3,
-      firstLeg + 3 + travelSecs(stops[1]!, stops[2]!, 800),
+      6 + firstLeg,
+      6 + firstLeg + travelSecs(stops[1]!, stops[2]!, 800),
     ]);
   });
 
@@ -62,7 +63,7 @@ describe('runHunter', () => {
     const result = await runHunter(sim.join('a'), strategy, { shouldStop: () => decisions >= 5 });
     expect(result.outcome).toBe('stopped');
     expect(result.probes).toBe(5);
-    expect(sim.logbook('a').map((entry) => entry.ts - T0)).toEqual([0, 3, 6, 9, 12]);
+    expect(sim.logbook('a').map((entry) => entry.ts - T0)).toEqual([3, 6, 9, 12, 15]);
     expect(sim.publicState().ships[0]!.departTs).toBe(T0);
   });
 
@@ -72,7 +73,7 @@ describe('runHunter', () => {
     expect(result.outcome).toBe('exhausted');
     expect(result.probes).toBe(MAX_PROBES);
     expect(result.status).toBe(HuntStatus.Live);
-    expect(result.finishedAt).toBe(T0 + 63 * 3);
+    expect(result.finishedAt).toBe(T0 + 64 * 3);
   });
 
   it('reports a win by closest sounding at the deadline', async () => {
@@ -80,8 +81,8 @@ describe('runHunter', () => {
     const result = await runHunter(sim.join('a'), route(antipode(sim.peek().location), []));
     expect(result.outcome).toBe('closest');
     expect(result.status).toBe(HuntStatus.Closest);
-    // Probes at 0, 3, ..., 18; the one due at 21 is past the deadline.
-    expect(result.probes).toBe(7);
+    // Probes at 3, 6, ..., 18; the one due at 21 is past the deadline.
+    expect(result.probes).toBe(6);
   });
 
   it('reports a defeat when a rival strikes first', async () => {

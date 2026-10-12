@@ -1,7 +1,7 @@
 {
   "name": "@terra-incognita/hunter",
   "version": "0.1.0",
-  "description": "Solver, bot personalities and an in-memory simulator for Terra Incognita hunts",
+  "description": "Solver, bot personalities, an in-memory simulator and a chain client for Terra Incognita hunts",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -10,7 +10,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
@@ -23,7 +24,9 @@
     "bench": "tsx scripts/benchmark.ts"
   },
   "dependencies": {
-    "@terra-incognita/core": "^0.1.0"
+    "@solana/web3.js": "^1.98.4",
+    "@terra-incognita/core": "^0.1.0",
+    "@terra-incognita/sdk": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

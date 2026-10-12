@@ -13,3 +13,5 @@ export { benchRace, benchSolo, formatRace, formatSolo, summarize } from './bench
 export type { BenchConfig, RaceStats, SoloStats, Summary } from './bench.js';
 export { createRng, hashSeed } from './rng.js';
 export type { Rng } from './rng.js';
+export { ChainHuntClient, runChainBots } from './chain.js';
+export type { BotEvent, BotOutcome, ChainBot, RunBotsOptions } from './chain.js';

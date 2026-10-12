@@ -1,4 +1,4 @@
-import { HuntStatus, MAX_PROBES, PROBE_COOLDOWN_SECS } from '@terra-incognita/core';
+import { HuntStatus, MAX_PROBES, PROBE_COOLDOWN_SECS, canonical } from '@terra-incognita/core';
 import type { LogEntry, Vec3 } from '@terra-incognita/core';
 
 import { HuntError } from './client.js';
@@ -37,8 +37,10 @@ export interface RunOptions {
   shouldStop?: () => boolean;
 }
 
-function sameVec(a: Vec3, b: Vec3): boolean {
-  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+/** Whether `target` is where the ship already is. Ships hold positions in canonical form. */
+function samePlace(target: Vec3, at: Vec3): boolean {
+  const c = canonical(target);
+  return c[0] === at[0] && c[1] === at[1] && c[2] === at[2];
 }
 
 /**
@@ -88,8 +90,9 @@ export async function runHunter(
       }
 
       const target = solver.nextProbe(view);
-      let readyAt = me.probes > 0 ? me.lastProbeTs + PROBE_COOLDOWN_SECS : now;
-      if (!sameVec(target, me.to)) {
+      // The cooldown runs from the last probe, or from embarking before the first one.
+      let readyAt = me.lastProbeTs + PROBE_COOLDOWN_SECS;
+      if (!samePlace(target, me.to)) {
         options.onCourse?.(target);
         await client.setCourse(target);
         const flying = (await client.getPublicState()).ships[shipIndex];

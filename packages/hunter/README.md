@@ -1,7 +1,7 @@
 # @terra-incognita/hunter
 
-A solver that plays Terra Incognita, four bot personalities built on it, and an in-memory hunt
-to play them against.
+A solver that plays Terra Incognita, four bot personalities built on it, an in-memory hunt to
+play them against, and a client that lets them play real hunts on chain.
 
 A probe tells a player one thing: which of eight distance bands the treasure is in, seen from
 where the ship is. The solver turns a logbook of such answers into the next place to probe.
@@ -76,29 +76,61 @@ interface HuntClient {
 ```
 
 `SimHunt` implements it in memory and enforces the rules of the program: flight time from the
-chord, no new course and no probe while in the air, a 3 s cooldown between probes, 64 probes
-per ship, a ring of the last 128 public pins, the zone schedule, a strike within 50 km, and the
-closest sounding at the deadline (the earlier one on a tie, void if nobody probed). Its clock is
-virtual and counts whole seconds.
+chord, no new course and no probe while in the air, a 3 s cooldown between probes that already
+runs from embarking, 64 probes per ship, a ring of the last 128 public pins, the zone schedule,
+a strike within 50 km, and the closest sounding at the deadline (the earlier one on a tie, void
+if nobody probed). Positions are stored in canonical form, as the program stores them. A strike
+is recorded privately and only becomes public at the next tick; the simulator ticks before
+every action and read. Its clock is virtual and counts whole seconds.
 
 The solver itself is synchronous and has no notion of a client: `solver.nextProbe(view)` takes
 the public state and a logbook and returns a position, so a belief can be rebuilt from a
 logbook at any time. Anything with `chooseStart` and `nextProbe` is a `Strategy` and can be
 driven by `runHunter`.
 
+## On a real hunt
+
+`ChainHuntClient` implements `HuntClient` with `@terra-incognita/sdk`: public state from the
+rollup, the logbook through the player's session key, every move a rollup transaction. The
+same solver that plays `SimHunt` plays a live hunt through it:
+
+```ts
+import { Keypair } from '@solana/web3.js';
+import { PlayerSession, TerraClient } from '@terra-incognita/sdk';
+import { ChainHuntClient, SURVEYOR, Solver, runHunter, runChainBots } from '@terra-incognita/hunter';
+
+const client = new TerraClient();
+const { session } = await PlayerSession.join(client, wallet, hunt);
+await runHunter(new ChainHuntClient(session), new Solver(SURVEYOR, 7));
+
+// Or several bots from funded keys, with a keeper that ticks the hunt while they play.
+await runChainBots(client, hunt, [
+  { name: 'ana', owner: Keypair.generate(), personality: 'surveyor' },
+  { name: 'ben', owner: Keypair.generate(), personality: 'sprinter' },
+]);
+```
+
+After a strike the client ticks and finalizes the hunt itself, and it closes a hunt whose
+deadline has passed, so a game always ends even without a crank. Program errors arrive as the
+same `HuntError` codes the simulator throws.
+
+`test/devnet.e2e.test.ts` plays three bots against each other on devnet, waits for the payout
+and audits the hunt. It only runs with `TERRA_DEVNET=1` and a funded `deployer.json` in
+`TERRA_KEYS_DIR`.
+
 ## Benchmark
 
 `npm run bench -w @terra-incognita/hunter -- --hunts 1000` plays simulated hunts at 800 km/s
-with the 3 s cooldown. 1000 hunts per row, seed 1:
+with the 3 s cooldown, which starts at embark. 1000 hunts per row, seed 1:
 
 Solo, zone off, no deadline
 
 | personality | struck | out of probes | probes: p10 / median / mean / p90 / max | seconds: p10 / median / mean / p90 / max |
 | --- | --- | --- | --- | --- |
-| surveyor | 100.0% | 0 | 8 / 10 / 10.1 / 12 / 17 | 28 / 45 / 43.5 / 57 / 75 |
-| sprinter | 100.0% | 0 | 9 / 13 / 13.6 / 18 / 24 | 26 / 39 / 39.3 / 54 / 70 |
-| shadow | 100.0% | 0 | 8 / 10 / 10.4 / 13 / 16 | 27 / 42 / 41.0 / 55 / 71 |
-| wanderer | 91.8% | 82 | 13 / 27 / 29.6 / 51 / 64 | 70 / 138 / 150.9 / 251 / 390 |
+| surveyor | 100.0% | 0 | 8 / 10 / 10.1 / 12 / 17 | 31 / 48 / 46.5 / 60 / 78 |
+| sprinter | 100.0% | 0 | 9 / 13 / 13.6 / 18 / 24 | 29 / 42 / 42.3 / 57 / 73 |
+| shadow | 100.0% | 0 | 8 / 10 / 10.4 / 13 / 16 | 30 / 45 / 44.0 / 58 / 74 |
+| wanderer | 91.8% | 82 | 13 / 27 / 29.6 / 51 / 64 | 70 / 138 / 151.0 / 251 / 390 |
 
 Race, one of each in the same hunt, zone stage every 60 s, deadline 900 s
 
@@ -107,9 +139,9 @@ Race, one of each in the same hunt, zone stage every 60 s, deadline 900 s
 | sprinter | 40.6% | 10.6 |
 | shadow | 33.9% | 7.1 |
 | surveyor | 25.1% | 6.2 |
-| wanderer | 0.4% | 3.4 |
+| wanderer | 0.4% | 3.9 |
 
-Every race ended with a strike; the winning strike came after a median of 31 s.
+Every race ended with a strike; the winning strike came after a median of 34 s.
 
 Reading the numbers: locating a 50 km cap on the globe takes about 16 bits. A probe yields at
 most 3 and the first one about 1.6, so ten probes is close to what the bands allow. The sprinter
@@ -117,7 +149,7 @@ is only about four seconds faster than the surveyor on its own, but it wins the 
 The wanderer runs out of probes in 8% of its solo hunts; "out of probes" means all 64 were
 spent without a strike. Probe and second statistics cover the hunts that ended with a strike.
 With the zone on, the first three finish before the zone matters and their solo numbers do not
-change; the wanderer strikes 94.6% of the time. Following rivals changes where the shadow flies
+change; the wanderer strikes 94.5% of the time. Following rivals changes where the shadow flies
 more than how often it wins: with its rival weight set to zero it won 31.4% of 500 such races,
 against 33.4% with it, a difference inside the noise.
 
@@ -125,7 +157,7 @@ against 33.4% with it, a difference inside the noise.
 
 ```sh
 npm install                                # from the repository root
-npm run build -w @terra-incognita/core     # the hunter builds against the core's dist/
-npm run build -w @terra-incognita/hunter
+npm run build:packages                     # core, sdk, then hunter
 npm test -w @terra-incognita/hunter
+TERRA_DEVNET=1 TERRA_KEYS_DIR=<dir> npx vitest run test/devnet.e2e.test.ts   # from packages/hunter
 ```
