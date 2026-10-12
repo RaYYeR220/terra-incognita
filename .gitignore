@@ -40,3 +40,5 @@ mockups/
 design-ref/
 variants/
 graphify-out/
+.vercel
+.env*
