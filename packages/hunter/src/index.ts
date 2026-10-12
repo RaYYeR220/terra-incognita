@@ -1,0 +1,15 @@
+export { HuntError } from './client.js';
+export type { HuntClient, HuntErrorCode, PublicState } from './client.js';
+export { SimHunt } from './sim.js';
+export type { SimHuntOptions } from './sim.js';
+export { Belief } from './belief.js';
+export { Solver } from './solver.js';
+export type { Estimate, SolverView, Strategy } from './solver.js';
+export { PERSONALITIES, SHADOW, SPRINTER, SURVEYOR, WANDERER } from './personalities.js';
+export type { Personality, PersonalityName } from './personalities.js';
+export { runHunter } from './play.js';
+export type { HunterOutcome, HunterResult, RunOptions } from './play.js';
+export { benchRace, benchSolo, formatRace, formatSolo, summarize } from './bench.js';
+export type { BenchConfig, RaceStats, SoloStats, Summary } from './bench.js';
+export { createRng, hashSeed } from './rng.js';
+export type { Rng } from './rng.js';
