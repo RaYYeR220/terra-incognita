@@ -1,0 +1,3867 @@
+{
+  "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v",
+  "metadata": {
+    "name": "terra_incognita",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "A global treasure hunt whose location lives inside a private ephemeral rollup"
+  },
+  "instructions": [
+    {
+      "name": "arm",
+      "docs": [
+        "Starts the hunt once the treasure is sealed: publishes the commitment to the location",
+        "and commits the hunt to Solana so the commitment is anchored before anyone plays."
+      ],
+      "discriminator": [
+        230,
+        51,
+        249,
+        116,
+        166,
+        65,
+        21,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_board",
+      "docs": [
+        "Closes the released board of a finalized hunt and returns its rent, together with",
+        "whatever the hunt account holds beyond its own rent, to the creator."
+      ],
+      "discriminator": [
+        117,
+        4,
+        35,
+        166,
+        80,
+        233,
+        153,
+        42
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_logbook",
+      "docs": [
+        "Closes a released logbook and returns its rent to the player."
+      ],
+      "discriminator": [
+        69,
+        220,
+        67,
+        125,
+        16,
+        240,
+        189,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_treasure",
+      "docs": [
+        "Closes the released treasure of a finalized hunt. The hunt account keeps the revealed",
+        "location and salt; the zone seed and the closest sounding go with the treasure."
+      ],
+      "discriminator": [
+        187,
+        30,
+        57,
+        240,
+        198,
+        200,
+        102,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_hunt",
+      "docs": [
+        "Creates a hunt on Solana: the public hunt and board, the treasure that will hold the",
+        "secret, and the vault that keeps the prize until settlement."
+      ],
+      "discriminator": [
+        184,
+        154,
+        59,
+        39,
+        76,
+        114,
+        11,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "action_escrow",
+          "writable": true
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "HuntParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "delegate_hunt",
+      "docs": [
+        "Delegates the hunt, its board and its treasure to the hunt's validator.",
+        "Accounts that are already delegated are skipped, so the call can be repeated."
+      ],
+      "discriminator": [
+        15,
+        231,
+        0,
+        144,
+        0,
+        63,
+        217,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buffer_hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "embark",
+      "docs": [
+        "Makes the player's logbook private to its owner and operator and puts the airship",
+        "on the board at `start`. The sounding gear starts cold, so the first sounding has to",
+        "wait for the cooldown like any other."
+      ],
+      "discriminator": [
+        221,
+        131,
+        158,
+        83,
+        229,
+        46,
+        151,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "pilot",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook_permission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  58
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                136,
+                161,
+                10,
+                196,
+                33,
+                152,
+                1,
+                214,
+                246,
+                106,
+                29,
+                60,
+                6,
+                152,
+                192,
+                102,
+                169,
+                175,
+                212,
+                217,
+                180,
+                252,
+                231,
+                71,
+                151,
+                141,
+                209,
+                5,
+                168,
+                212,
+                103,
+                82
+              ]
+            }
+          }
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "start",
+          "type": {
+            "array": [
+              "i32",
+              3
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize",
+      "docs": [
+        "Ends a decided hunt: reveals the location and salt, commits the hunt to Solana,",
+        "releases it from the rollup and schedules the payout in the same intent. Whether it",
+        "may run depends on the public hunt state alone."
+      ],
+      "discriminator": [
+        171,
+        61,
+        218,
+        56,
+        127,
+        115,
+        12,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "join",
+      "docs": [
+        "Enters a hunt on Solana: pays the entry fee into the vault, creates the player's",
+        "logbook and delegates it to the hunt's validator. `operator` is a session key that",
+        "may fly the airship on the owner's behalf; prizes always go to the owner."
+      ],
+      "discriminator": [
+        206,
+        55,
+        2,
+        106,
+        113,
+        220,
+        17,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "docs": [
+            "deserialized and address-checked in the handler."
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "buffer_logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "operator",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "open_hunt",
+      "docs": [
+        "Opens the hunt inside the rollup: makes the treasure unreadable for everyone and, in",
+        "VRF mode, asks the oracle for the randomness that will place it."
+      ],
+      "discriminator": [
+        210,
+        48,
+        140,
+        2,
+        52,
+        192,
+        229,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "hunt"
+          ]
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure_permission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  58
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                136,
+                161,
+                10,
+                196,
+                33,
+                152,
+                1,
+                214,
+                246,
+                106,
+                29,
+                60,
+                6,
+                152,
+                192,
+                102,
+                169,
+                175,
+                212,
+                217,
+                180,
+                252,
+                231,
+                71,
+                151,
+                141,
+                209,
+                5,
+                168,
+                212,
+                103,
+                82
+              ]
+            }
+          }
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "5hBR571xnXppuCPveTrctfTU7tJLSN94nq7kv7FRK5Tc"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_logbook",
+      "docs": [
+        "Makes a logbook readable by everyone once the hunt is over, so every hint in it can",
+        "be checked against the revealed location."
+      ],
+      "discriminator": [
+        65,
+        218,
+        114,
+        16,
+        79,
+        244,
+        125,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "treasure",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook.hunt",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook.hunt",
+                "account": "Logbook"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook_permission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  58
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                136,
+                161,
+                10,
+                196,
+                33,
+                152,
+                1,
+                214,
+                246,
+                106,
+                29,
+                60,
+                6,
+                152,
+                192,
+                102,
+                169,
+                175,
+                212,
+                217,
+                180,
+                252,
+                231,
+                71,
+                151,
+                141,
+                209,
+                5,
+                168,
+                212,
+                103,
+                82
+              ]
+            }
+          }
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "open_treasure",
+      "docs": [
+        "Makes the treasure account readable by everyone once the hunt is over."
+      ],
+      "discriminator": [
+        182,
+        11,
+        160,
+        145,
+        11,
+        250,
+        104,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure.hunt",
+                "account": "Treasure"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure_permission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  58
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                136,
+                161,
+                10,
+                196,
+                33,
+                152,
+                1,
+                214,
+                246,
+                106,
+                29,
+                60,
+                6,
+                152,
+                192,
+                102,
+                169,
+                175,
+                212,
+                217,
+                180,
+                252,
+                231,
+                71,
+                151,
+                141,
+                209,
+                5,
+                168,
+                212,
+                103,
+                82
+              ]
+            }
+          }
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "probe",
+      "docs": [
+        "Takes a sounding where the airship is. The distance band goes into the private",
+        "logbook and a pin, without the band, goes on the public board."
+      ],
+      "discriminator": [
+        9,
+        126,
+        79,
+        73,
+        106,
+        229,
+        245,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "pilot",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "process_undelegation",
+      "discriminator": [
+        196,
+        28,
+        41,
+        206,
+        48,
+        37,
+        51,
+        167
+      ],
+      "accounts": [
+        {
+          "name": "base_account",
+          "writable": true
+        },
+        {
+          "name": "buffer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  101,
+                  45,
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_account"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                181,
+                183,
+                0,
+                225,
+                242,
+                87,
+                58,
+                192,
+                204,
+                6,
+                34,
+                1,
+                52,
+                74,
+                207,
+                151,
+                184,
+                53,
+                6,
+                235,
+                140,
+                229,
+                25,
+                152,
+                204,
+                98,
+                126,
+                24,
+                147,
+                128,
+                167,
+                62
+              ]
+            }
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "account_seeds",
+          "type": {
+            "vec": "bytes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "release_board",
+      "docs": [
+        "Returns the board and the treasure to Solana after the hunt."
+      ],
+      "discriminator": [
+        30,
+        124,
+        132,
+        157,
+        15,
+        9,
+        104,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure.hunt",
+                "account": "Treasure"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure.hunt",
+                "account": "Treasure"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_logbook",
+      "docs": [
+        "Returns a logbook to Solana after the hunt, where its rent can be reclaimed."
+      ],
+      "discriminator": [
+        78,
+        109,
+        72,
+        138,
+        128,
+        82,
+        171,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasure",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook.hunt",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "logbook.hunt",
+                "account": "Logbook"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "schedule_tick",
+      "docs": [
+        "Registers a recurring `tick` with the Hydra scheduler of the rollup."
+      ],
+      "discriminator": [
+        197,
+        80,
+        214,
+        198,
+        209,
+        150,
+        211,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "crank",
+          "writable": true
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "hydra_program",
+          "address": "eHyd5BU8QffvHi4GnXwxrK4WpS7pM2x9UGKHBWii7mf"
+        }
+      ],
+      "args": [
+        {
+          "name": "interval_slots",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "schedule_tick_legacy",
+      "docs": [
+        "Registers a recurring `tick` with the validator's built-in task scheduler."
+      ],
+      "discriminator": [
+        175,
+        93,
+        123,
+        79,
+        128,
+        170,
+        167,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "task_id",
+          "type": "i64"
+        },
+        {
+          "name": "interval_millis",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "seal_from_author",
+      "docs": [
+        "Author mode: the creator places the treasure. The transaction goes straight to the",
+        "rollup and is only accepted once `open_hunt` has made the treasure private."
+      ],
+      "discriminator": [
+        90,
+        117,
+        157,
+        146,
+        40,
+        147,
+        159,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true,
+          "relations": [
+            "hunt"
+          ]
+        },
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "location",
+          "type": {
+            "array": [
+              "i32",
+              3
+            ]
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "seal_from_vrf",
+      "docs": [
+        "VRF callback. Stores the oracle's output in the treasure and nothing else; the",
+        "location is derived from it when the hunt is armed."
+      ],
+      "discriminator": [
+        28,
+        57,
+        25,
+        134,
+        69,
+        160,
+        242,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "vrf_program_identity",
+          "docs": [
+            "Scoped VRF identity PDA, bound to this program. Its presence as a signer proves",
+            "the callback was issued by the VRF program for this program."
+          ],
+          "signer": true
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure.hunt",
+                "account": "Treasure"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_course",
+      "docs": [
+        "Sends the airship towards `destination`. Only possible while it is not in flight."
+      ],
+      "discriminator": [
+        250,
+        103,
+        46,
+        37,
+        33,
+        217,
+        147,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "pilot",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "Logbook"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "destination",
+          "type": {
+            "array": [
+              "i32",
+              3
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Pays out the vault once the hunt is back on Solana in a final state. Scheduled by the",
+        "rollup together with the last commit, and callable by anyone as a fallback."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payee",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "writable": true
+        },
+        {
+          "name": "escrow_auth"
+        },
+        {
+          "name": "escrow"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "tick",
+      "docs": [
+        "Advances the hunt from the clock, one step per call: promotes a strike made in an",
+        "earlier slot, closes the hunt at the deadline, shrinks the public zone, or finalizes",
+        "a hunt that has ended. Does nothing when there is nothing to do. Takes no signers so",
+        "a scheduler can drive it."
+      ],
+      "discriminator": [
+        92,
+        79,
+        44,
+        8,
+        101,
+        80,
+        63,
+        15
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "Hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "Hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_fee_vault",
+          "writable": true
+        },
+        {
+          "name": "program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Board",
+      "discriminator": [
+        79,
+        48,
+        160,
+        63,
+        153,
+        132,
+        240,
+        56
+      ]
+    },
+    {
+      "name": "Hunt",
+      "discriminator": [
+        126,
+        151,
+        152,
+        114,
+        99,
+        37,
+        27,
+        144
+      ]
+    },
+    {
+      "name": "Logbook",
+      "discriminator": [
+        172,
+        25,
+        126,
+        120,
+        15,
+        17,
+        153,
+        255
+      ]
+    },
+    {
+      "name": "Treasure",
+      "discriminator": [
+        98,
+        92,
+        220,
+        45,
+        191,
+        149,
+        105,
+        178
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidParams",
+      "msg": "Hunt parameters are out of range"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidHunt",
+      "msg": "The account is not a hunt of this program"
+    },
+    {
+      "code": 6002,
+      "name": "WrongStatus",
+      "msg": "The hunt is not in the required state"
+    },
+    {
+      "code": 6003,
+      "name": "NotSealed",
+      "msg": "The treasure has not been sealed yet"
+    },
+    {
+      "code": 6004,
+      "name": "AlreadySealed",
+      "msg": "The treasure is already sealed"
+    },
+    {
+      "code": 6005,
+      "name": "SealPending",
+      "msg": "A randomness request is still pending"
+    },
+    {
+      "code": 6006,
+      "name": "VrfNotRequested",
+      "msg": "No randomness was requested for this treasure"
+    },
+    {
+      "code": 6007,
+      "name": "WrongMode",
+      "msg": "This hunt uses a different sealing mode"
+    },
+    {
+      "code": 6008,
+      "name": "NotUnitVector",
+      "msg": "Coordinates must be a unit vector scaled by 1e9"
+    },
+    {
+      "code": 6009,
+      "name": "HuntFull",
+      "msg": "The hunt has no free seats"
+    },
+    {
+      "code": 6010,
+      "name": "HuntClosed",
+      "msg": "The hunt no longer accepts players"
+    },
+    {
+      "code": 6011,
+      "name": "NotLive",
+      "msg": "The hunt is not live"
+    },
+    {
+      "code": 6012,
+      "name": "NotStarted",
+      "msg": "The hunt has not started yet"
+    },
+    {
+      "code": 6013,
+      "name": "DeadlinePassed",
+      "msg": "The deadline has passed"
+    },
+    {
+      "code": 6014,
+      "name": "NotPilot",
+      "msg": "Signer is neither the owner nor the operator of this logbook"
+    },
+    {
+      "code": 6015,
+      "name": "AlreadyEmbarked",
+      "msg": "The airship has already embarked"
+    },
+    {
+      "code": 6016,
+      "name": "NotEmbarked",
+      "msg": "The airship has not embarked"
+    },
+    {
+      "code": 6017,
+      "name": "InFlight",
+      "msg": "The airship is still in flight"
+    },
+    {
+      "code": 6018,
+      "name": "Cooldown",
+      "msg": "The sounding gear is cooling down"
+    },
+    {
+      "code": 6019,
+      "name": "ProbeLimit",
+      "msg": "The logbook is full"
+    },
+    {
+      "code": 6020,
+      "name": "NotEnded",
+      "msg": "The hunt has not ended"
+    },
+    {
+      "code": 6021,
+      "name": "AlreadyFinalized",
+      "msg": "The hunt is already finalized"
+    },
+    {
+      "code": 6022,
+      "name": "NotFinalized",
+      "msg": "The hunt is not finalized"
+    },
+    {
+      "code": 6023,
+      "name": "AlreadySettled",
+      "msg": "The vault is already settled"
+    },
+    {
+      "code": 6024,
+      "name": "NotRevealed",
+      "msg": "The treasure has not been revealed"
+    },
+    {
+      "code": 6025,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Board",
+      "docs": [
+        "Public state of a hunt: where every airship is and where the last soundings were taken."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hunt",
+            "type": "pubkey"
+          },
+          {
+            "name": "pin_count",
+            "docs": [
+              "Total pins ever pushed; the ring slot of the next pin is `pin_count % PIN_RING`."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "ship_count",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          },
+          {
+            "name": "ships",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Ship"
+                  }
+                },
+                64
+              ]
+            }
+          },
+          {
+            "name": "pins",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Pin"
+                  }
+                },
+                128
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hunt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "HuntMode"
+              }
+            }
+          },
+          {
+            "name": "validator",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "prize_seed",
+            "type": "u64"
+          },
+          {
+            "name": "creator_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_players",
+            "type": "u8"
+          },
+          {
+            "name": "speed_kms",
+            "type": "u32"
+          },
+          {
+            "name": "starts_at",
+            "type": "i64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "zone_interval_secs",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "HuntStatus"
+              }
+            }
+          },
+          {
+            "name": "finalized",
+            "type": "bool"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "zone_stage",
+            "type": "u8"
+          },
+          {
+            "name": "zone_center",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "players",
+            "type": "u8"
+          },
+          {
+            "name": "probes_total",
+            "type": "u32"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "revealed_location",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "revealed_salt",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "ended_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "board_bump",
+            "type": "u8"
+          },
+          {
+            "name": "treasure_bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "clue",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HuntMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Vrf"
+          },
+          {
+            "name": "Author"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HuntParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "HuntMode"
+              }
+            }
+          },
+          {
+            "name": "validator",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "prize_seed",
+            "type": "u64"
+          },
+          {
+            "name": "creator_bps",
+            "type": "u16"
+          },
+          {
+            "name": "max_players",
+            "type": "u8"
+          },
+          {
+            "name": "speed_kms",
+            "type": "u32"
+          },
+          {
+            "name": "starts_at",
+            "type": "i64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "zone_interval_secs",
+            "type": "u32"
+          },
+          {
+            "name": "ops_lamports",
+            "docs": [
+              "Lamports left on the hunt account for rollup fees."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "clue",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HuntStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Created"
+          },
+          {
+            "name": "Sealing"
+          },
+          {
+            "name": "Live"
+          },
+          {
+            "name": "Struck"
+          },
+          {
+            "name": "Closest"
+          },
+          {
+            "name": "Void"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LogEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pos",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "band",
+            "type": "u8"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Logbook",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hunt",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "ship_index",
+            "type": "u8"
+          },
+          {
+            "name": "embarked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "entries",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "LogEntry"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pin",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "pos",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "ship_index",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ship",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "depart_ts",
+            "type": "i64"
+          },
+          {
+            "name": "arrive_ts",
+            "type": "i64"
+          },
+          {
+            "name": "last_probe_ts",
+            "type": "i64"
+          },
+          {
+            "name": "from",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "to",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "probes",
+            "type": "u8"
+          },
+          {
+            "name": "embarked",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treasure",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hunt",
+            "type": "pubkey"
+          },
+          {
+            "name": "sealed",
+            "type": "bool"
+          },
+          {
+            "name": "revealed",
+            "docs": [
+              "Set at finalisation; unlocks the audit openers."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "entropy",
+            "docs": [
+              "Raw VRF output the location is derived from. Zero for author-placed treasures."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "location",
+            "type": {
+              "array": [
+                "i32",
+                3
+              ]
+            }
+          },
+          {
+            "name": "salt",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "zone_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vrf_requested_at",
+            "type": "i64"
+          },
+          {
+            "name": "best_dot",
+            "docs": [
+              "Closest sounding so far; `NO_SOUNDING` until the first one."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "best_player",
+            "type": "pubkey"
+          },
+          {
+            "name": "best_ts",
+            "type": "i64"
+          },
+          {
+            "name": "strike_player",
+            "docs": [
+              "First sounding within striking distance. It stays here, unseen, until a later",
+              "`tick` promotes it to the public hunt state. A zero slot means no strike."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "strike_slot",
+            "type": "u64"
+          },
+          {
+            "name": "strike_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hunt",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_seed",
+            "type": "u64"
+          },
+          {
+            "name": "entry_total",
+            "type": "u64"
+          },
+          {
+            "name": "entrants",
+            "type": "u8"
+          },
+          {
+            "name": "settled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

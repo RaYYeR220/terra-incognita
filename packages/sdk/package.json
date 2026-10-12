@@ -1,0 +1,42 @@
+{
+  "name": "@terra-incognita/sdk",
+  "version": "0.1.0",
+  "description": "Client for Terra Incognita hunts: accounts, instructions, rollup access and proofs",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./idl.json": "./idl/terra_incognita.json"
+  },
+  "files": [
+    "dist",
+    "idl"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sync-idl": "tsx scripts/sync-idl.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.0",
+    "@solana/web3.js": "^1.98.4",
+    "@terra-incognita/core": "^0.1.0",
+    "buffer": "^6.0.3"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.17.3",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
