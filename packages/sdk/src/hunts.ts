@@ -1,6 +1,6 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
 import type { TransactionInstruction } from '@solana/web3.js';
-import { HuntMode, HuntStatus, isTerminal, isUnit } from '@terra-incognita/core';
+import { HuntMode, HuntStatus, bytesEqual, canonical, commitment, isTerminal, isUnit } from '@terra-incognita/core';
 import type { Vec3 } from '@terra-incognita/core';
 
 import { accountDiscriminator, decodeHunt } from './accounts.js';
@@ -10,6 +10,7 @@ import { COMPUTE_UNITS, LIMITS } from './constants.js';
 import { TerraError, TerraTxError, isTxError } from './errors.js';
 import { HuntInstructions } from './instructions.js';
 import type { HuntParams } from './instructions.js';
+import { encryptedActions } from './sealed.js';
 import { toSigner } from './signer.js';
 import type { TerraSigner } from './signer.js';
 import { sleep, waitFor } from './client.js';
@@ -23,10 +24,18 @@ export interface CreateHuntOptions {
   location?: Vec3;
   /** Author mode: salt of the commitment. Random when absent. */
   salt?: Uint8Array;
+  /**
+   * Author mode: carry the location and salt inside the delegation, encrypted to the rollup
+   * validator, so they never appear in clear on Solana or in a rollup transaction. Default
+   * true. With false the creator sends `seal_from_author` to the rollup directly.
+   */
+  sealed?: boolean;
   /** Seed of the hunt address. Defaults to the current time in milliseconds. */
   id?: bigint | number;
   title?: string;
   clue?: string;
+  /** Same as `clue`: the riddle of an author hunt. Wins when both are given. */
+  riddle?: string;
   /** Lamports. */
   entryFee?: number;
   /** Lamports. */
@@ -53,6 +62,10 @@ export interface CreatedHunt {
   hunt: PublicKey;
   id: bigint;
   account: HuntAccount;
+  /** How the treasure was placed: by VRF, by an encrypted action in the delegation, or by a direct seal. */
+  sealing: 'vrf' | 'encrypted' | 'direct';
+  /** Author mode: the salt of the commitment, which the creator may keep to check it. */
+  salt?: Uint8Array;
   signatures: Partial<Record<CreateStep, string>>;
   /** The scheduler that runs `tick`, or null when none could be registered. */
   crank: 'hydra' | 'legacy' | null;
@@ -61,10 +74,17 @@ export interface CreatedHunt {
 const randomBytes = (length: number): Uint8Array => crypto.getRandomValues(new Uint8Array(length));
 
 /**
- * Takes a hunt from nothing to live: creates it and delegates it on Solana, opens it inside the
- * rollup, seals the treasure (by the author, or by the VRF callback), arms it once sealed and
- * waits until the commitment is anchored on Solana. Finally registers a crank if one is
- * available. The creator signs create, delegate, open and, in author mode, seal.
+ * Takes a hunt from nothing to live and waits until the commitment is anchored on Solana, then
+ * registers a crank if one is available.
+ *
+ * - VRF mode: create and delegate on Solana, open inside the rollup (which requests the
+ *   randomness), arm once the callback has sealed the treasure.
+ * - Author mode, `sealed` (the default): create on Solana, then delegate with the location and
+ *   salt encrypted to the validator as a post-delegation action; the validator seals the
+ *   treasure inside the rollup, and the hunt is armed once it has. The creator signs two
+ *   transactions and the location never appears in clear.
+ * - Author mode with `sealed: false`: create, delegate, open, then `seal_from_author` sent to
+ *   the rollup by the creator.
  */
 export async function createHunt(
   client: TerraClient,
@@ -85,6 +105,8 @@ export async function createHunt(
     options.onStep?.(name, signature);
   };
 
+  const sealing: CreatedHunt['sealing'] = mode === HuntMode.Vrf ? 'vrf' : options.sealed === false ? 'direct' : 'encrypted';
+  const salt = mode === HuntMode.Author ? (options.salt ?? randomBytes(32)) : undefined;
   const now = Math.floor(Date.now() / 1000);
   const startsAt = now + (options.startsInSecs ?? 0);
   const params: HuntParams = {
@@ -100,7 +122,7 @@ export async function createHunt(
     zoneIntervalSecs: options.zoneIntervalSecs ?? 60,
     opsLamports: options.opsLamports ?? 20_000_000,
     title: options.title ?? 'Terra Incognita',
-    clue: options.clue ?? '',
+    clue: options.riddle ?? options.clue ?? '',
   };
   validateParams(params);
 
@@ -110,19 +132,29 @@ export async function createHunt(
   );
   await waitFor('the hunt on Solana', async () => (await client.residence(ix.hunt)) === 'solana', 60_000, 750);
 
-  step(
-    'delegate',
-    await client.send('solana', [ix.delegateHunt(id)], wallet, { computeUnits: COMPUTE_UNITS.delegateHunt }),
-  );
-  await client.waitForDelegation([ix.hunt, ix.addresses.board, ix.addresses.treasure]);
-
-  step('open', await sendWithRetry(client, () => client.send('rollup', [ix.openHunt()], wallet, { computeUnits: COMPUTE_UNITS.openHunt })));
-
-  if (mode === HuntMode.Author) {
-    const salt = options.salt ?? randomBytes(32);
-    step('seal', await client.send('rollup', [ix.sealFromAuthor(options.location as Vec3, salt)], wallet));
+  if (sealing === 'encrypted') {
+    const actions = encryptedActions([ix.sealFromAction(options.location as Vec3, salt as Uint8Array)], client.config.validator);
+    step(
+      'delegate',
+      await client.send('solana', [ix.delegateHuntSealed(id, actions)], wallet, { computeUnits: COMPUTE_UNITS.delegateHuntSealed }),
+    );
+    await client.waitForDelegation([ix.hunt, ix.addresses.board, ix.addresses.treasure]);
+    step('seal');
+  } else {
+    step(
+      'delegate',
+      await client.send('solana', [ix.delegateHunt(id)], wallet, { computeUnits: COMPUTE_UNITS.delegateHunt }),
+    );
+    await client.waitForDelegation([ix.hunt, ix.addresses.board, ix.addresses.treasure]);
+    step('open', await sendWithRetry(client, () => client.send('rollup', [ix.openHunt()], wallet, { computeUnits: COMPUTE_UNITS.openHunt })));
+    if (sealing === 'direct') {
+      step('seal', await client.send('rollup', [ix.sealFromAuthor(options.location as Vec3, salt as Uint8Array)], wallet));
+    }
   }
 
+  // Until the treasure is sealed, arm fails with NotSealed, or with WrongStatus while an
+  // encrypted seal has not run yet.
+  const notYet = sealing === 'encrypted' ? (['NotSealed', 'WrongStatus'] as const) : (['NotSealed'] as const);
   const armIx = ix.arm(operator.publicKey);
   step(
     'arm',
@@ -132,7 +164,9 @@ export async function createHunt(
         try {
           return await client.send('rollup', [armIx], operator, { computeUnits: COMPUTE_UNITS.arm });
         } catch (error) {
-          if (isTxError(error, 'NotSealed')) return null;
+          if (isTxError(error, ...notYet)) return null;
+          // The rollup may not have cloned the freshly delegated accounts yet.
+          if (error instanceof TerraTxError && error.code === null && error.signature === null) return null;
           throw error;
         }
       },
@@ -153,12 +187,23 @@ export async function createHunt(
     1_000,
   );
   step('anchored');
+  if (salt && !bytesEqual(account.commitment, commitment(ix.hunt.toBytes(), canonical(options.location as Vec3), salt))) {
+    throw new TerraError('CommitmentMismatch', 'the anchored commitment does not match the location and salt the creator chose');
+  }
 
   let crank: CreatedHunt['crank'] = null;
   if (options.crankIntervalSecs !== false) {
     crank = await scheduleCrank(client, ix, operator, options.crankIntervalSecs ?? 1, (signature) => step('crank', signature));
   }
-  return { hunt: ix.hunt, id, account: (await client.fetchHunt(ix.hunt)) ?? account, signatures, crank };
+  return {
+    hunt: ix.hunt,
+    id,
+    account: (await client.fetchHunt(ix.hunt)) ?? account,
+    sealing,
+    ...(salt ? { salt } : {}),
+    signatures,
+    crank,
+  };
 }
 
 function validateParams(params: HuntParams): void {

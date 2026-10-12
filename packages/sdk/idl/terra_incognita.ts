@@ -980,6 +980,520 @@ export type TerraIncognita = {
       ]
     },
     {
+      "name": "delegateHuntSealed",
+      "docs": [
+        "Author mode, sealed without a readable transaction: delegates the hunt, its board and",
+        "its treasure, and attaches to the treasure's delegation a post-delegation action that",
+        "the validator runs inside the rollup. The client encrypts the action's arguments, the",
+        "location and the salt, to the validator's key, so they never appear in clear on Solana",
+        "or in the rollup. The action has to be `seal_from_action` signed by the creator."
+      ],
+      "discriminator": [
+        246,
+        98,
+        243,
+        175,
+        236,
+        228,
+        97,
+        27
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "bufferHunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegationRecordHunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "delegationMetadataHunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferBoard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegationRecordBoard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "delegationMetadataBoard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "board"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bufferTreasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                31,
+                121,
+                116,
+                169,
+                207,
+                1,
+                221,
+                226,
+                235,
+                100,
+                3,
+                209,
+                66,
+                211,
+                59,
+                216,
+                221,
+                47,
+                131,
+                36,
+                180,
+                228,
+                100,
+                48,
+                170,
+                4,
+                165,
+                236,
+                207,
+                205,
+                239,
+                253
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegationRecordTreasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "delegationMetadataTreasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ownerProgram",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "delegationProgram",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "actions",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
       "name": "embark",
       "docs": [
         "Makes the player's logbook private to its owner and operator and puts the airship",
@@ -2576,6 +3090,182 @@ export type TerraIncognita = {
         {
           "name": "intervalMillis",
           "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "sealFromAction",
+      "docs": [
+        "Author mode, run by the validator as the post-delegation action attached by",
+        "`delegate_hunt_sealed`: makes the treasure private and places it in one step."
+      ],
+      "discriminator": [
+        29,
+        105,
+        81,
+        7,
+        7,
+        74,
+        162,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true,
+          "relations": [
+            "hunt"
+          ]
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasurePermission",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  114,
+                  109,
+                  105,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110,
+                  58
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasure"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                136,
+                161,
+                10,
+                196,
+                33,
+                152,
+                1,
+                214,
+                246,
+                106,
+                29,
+                60,
+                6,
+                152,
+                192,
+                102,
+                169,
+                175,
+                212,
+                217,
+                180,
+                252,
+                231,
+                71,
+                151,
+                141,
+                209,
+                5,
+                168,
+                212,
+                103,
+                82
+              ]
+            }
+          }
+        },
+        {
+          "name": "permissionProgram",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeralVault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magicProgram",
+          "address": "Magic11111111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "location",
+          "type": {
+            "array": [
+              "i32",
+              3
+            ]
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },

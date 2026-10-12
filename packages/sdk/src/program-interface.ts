@@ -191,6 +191,76 @@ export const PROGRAM_INTERFACE = {
         }
       ]
     },
+    "delegate_hunt_sealed": {
+      "discriminator": [246, 98, 243, 175, 236, 228, 97, 27],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buffer_hunt",
+          "writable": true
+        },
+        {
+          "name": "delegation_record_hunt",
+          "writable": true
+        },
+        {
+          "name": "delegation_metadata_hunt",
+          "writable": true
+        },
+        {
+          "name": "hunt",
+          "writable": true
+        },
+        {
+          "name": "buffer_board",
+          "writable": true
+        },
+        {
+          "name": "delegation_record_board",
+          "writable": true
+        },
+        {
+          "name": "delegation_metadata_board",
+          "writable": true
+        },
+        {
+          "name": "board",
+          "writable": true
+        },
+        {
+          "name": "buffer_treasure",
+          "writable": true
+        },
+        {
+          "name": "delegation_record_treasure",
+          "writable": true
+        },
+        {
+          "name": "delegation_metadata_treasure",
+          "writable": true
+        },
+        {
+          "name": "treasure",
+          "writable": true
+        },
+        {
+          "name": "owner_program",
+          "address": "37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ]
+    },
     "embark": {
       "discriminator": [221, 131, 158, 83, 229, 46, 151, 168],
       "accounts": [
@@ -580,6 +650,40 @@ export const PROGRAM_INTERFACE = {
           "name": "magic_context",
           "writable": true,
           "address": "MagicContext1111111111111111111111111111111"
+        }
+      ]
+    },
+    "seal_from_action": {
+      "discriminator": [29, 105, 81, 7, 7, 74, 162, 227],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true
+        },
+        {
+          "name": "treasure",
+          "writable": true
+        },
+        {
+          "name": "treasure_permission",
+          "writable": true
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "ephemeral_vault",
+          "writable": true,
+          "address": "MagicVau1t999999999999999999999999999999999"
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
         }
       ]
     },

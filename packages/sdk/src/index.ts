@@ -21,6 +21,7 @@ export type {
 } from './accounts.js';
 export { Reader, Writer, base58 } from './codec.js';
 export { HuntInstructions, buildInstruction, computeLimit, encodeHuntParams } from './instructions.js';
+export { encryptedActions, openSealed, sealTo } from './sealed.js';
 export type { HuntParams, InstructionName } from './instructions.js';
 export { TerraError, TerraTxError, customErrorCode, isTxError, programErrorName } from './errors.js';
 export type { ProgramErrorName } from './errors.js';

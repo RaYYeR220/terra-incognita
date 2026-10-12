@@ -43,6 +43,7 @@ export const LIMITS = {
 export const COMPUTE_UNITS = {
   createHunt: 400_000,
   delegateHunt: 600_000,
+  delegateHuntSealed: 800_000,
   join: 300_000,
   openHunt: 400_000,
   arm: 400_000,

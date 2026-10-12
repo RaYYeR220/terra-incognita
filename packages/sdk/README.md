@@ -3,8 +3,8 @@
 The client for Terra Incognita hunts: account decoders, instruction builders, rollup sessions,
 the flows that create and play a hunt, a live subscription, and the proof of a finished hunt.
 It runs in the browser and in Node. Runtime dependencies are `@solana/web3.js`, `@noble/curves`
-(to sign the rollup login with a local key), `buffer` and `@terra-incognita/core`; Anchor is not
-needed at runtime.
+and `@noble/hashes` (rollup login, sealed author locations), `tweetnacl` (the sealed box),
+`buffer` and `@terra-incognita/core`; Anchor is not needed at runtime.
 
 A hunt lives on two layers. The hunt, its board and its treasure are created on Solana and
 delegated to a private ephemeral rollup running in a TEE; players join on Solana and play in the
@@ -25,6 +25,12 @@ const client = new TerraClient();                       // devnet endpoints by d
 // Creator: create, delegate, open, seal (VRF or author), arm, crank. Live in about 10 s.
 const { hunt } = await createHunt(client, walletSigner(wallet), {
   mode: 'vrf', title: 'Open waters', prizeSeed: 20_000_000, durationSecs: 900, zoneIntervalSecs: 90,
+});
+
+// Author mode: the location and salt travel encrypted to the rollup validator inside the
+// delegation and never appear in clear on Solana. Two wallet signatures.
+await createHunt(client, walletSigner(wallet), {
+  mode: 'author', location: fromLatLon(-22.95, -43.21), riddle: 'Arms open over the bay', durationSecs: 900,
 });
 
 // Player: the wallet signs `join` once; a fresh session key signs everything after that.
@@ -65,7 +71,13 @@ reader?)`, `fetchTreasure`, `isDelegated`, `waitForDelegation`, `waitForRelease`
 `buildInstruction(name, accounts, args)` builds any instruction from the interface synced from
 the IDL.
 
-**Flows** — `createHunt`, `listHunts({ creator })`, `isJoinable`, `PlayerSession` (`join`,
+**Sealed actions** — `encryptedActions(instructions, validator)` encodes post-delegation
+actions with their arguments sealed to the validator (libsodium sealed box to its X25519 key);
+`sealTo` and `openSealed` are the box itself. `HuntInstructions.delegateHuntSealed` and
+`sealFromAction` are the two instructions that use them.
+
+**Flows** — `createHunt` (`sealed: false` sends `seal_from_author` in the rollup instead of the
+encrypted seal; `riddle` is the same as `clue`), `listHunts({ creator })`, `isJoinable`, `PlayerSession` (`join`,
 `restore`, `serialize`, `embark`, `setCourse`, `fly`, `probe`, `readLogbook`, `ship`,
 `readyAt`), `watchHunt`, `advanceHunt` (one keeper step: tick, finalize or the settle
 fallback), `concludeHunt`, `waitForSettlement`, `scheduleCrank`.

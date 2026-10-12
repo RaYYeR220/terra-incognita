@@ -206,6 +206,37 @@ describe('instructions match the Anchor client', () => {
     same(ix.closeTreasure(), await m.closeTreasure!().accountsPartial({ hunt, treasure, creator }).instruction());
   });
 
+  it('delegate_hunt_sealed and seal_from_action', async () => {
+    const location = fromLatLon(-22.9519, -43.2105);
+    const salt = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
+    same(
+      ix.sealFromAction(location, salt),
+      await m
+        .sealFromAction!([...location], Array.from(salt))
+        .accountsPartial({ creator, hunt, treasure, treasurePermission: permissionPdaFromAccount(treasure), ...permission })
+        .instruction(),
+    );
+    const actions = Uint8Array.from({ length: 300 }, (_, i) => (i * 7) & 0xff);
+    same(
+      ix.delegateHuntSealed(id, actions),
+      await m
+        .delegateHuntSealed!(new BN(id.toString()), Buffer.from(actions))
+        .accountsPartial({
+          creator,
+          hunt,
+          board,
+          treasure,
+          ...delegation('Hunt', hunt),
+          ...delegation('Board', board),
+          ...delegation('Treasure', treasure),
+          ownerProgram: PROGRAM_ID,
+          delegationProgram: MB_DELEGATION,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction(),
+    );
+  });
+
   it('open_hunt, seal_from_author and arm', async () => {
     same(
       ix.openHunt(),

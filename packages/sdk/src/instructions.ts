@@ -202,6 +202,27 @@ export class HuntInstructions {
     );
   }
 
+  /**
+   * Delegates like `delegateHunt` and attaches post-delegation actions (see `encryptedActions`)
+   * that the validator runs inside the rollup once it holds the treasure. Author mode only.
+   */
+  delegateHuntSealed(id: bigint | number, actions: Uint8Array): TransactionInstruction {
+    return this.ix(
+      'delegate_hunt_sealed',
+      {
+        creator: this.creator,
+        hunt: this.hunt,
+        board: this.addresses.board,
+        treasure: this.addresses.treasure,
+        ...this.delegation('Hunt', this.hunt),
+        ...this.delegation('Board', this.addresses.board),
+        ...this.delegation('Treasure', this.addresses.treasure),
+        ownerProgram: this.programId,
+      },
+      new Writer().u64(id).u32(actions.length).bytes(actions).finish(),
+    );
+  }
+
   join(player: PublicKey, operator: PublicKey): TransactionInstruction {
     const logbook = this.logbook(player);
     return this.ix(
@@ -262,6 +283,24 @@ export class HuntInstructions {
     return this.ix(
       'seal_from_author',
       { creator: this.creator, hunt: this.hunt, treasure: this.addresses.treasure },
+      new Writer().vec3(location).fixed(salt, 32).finish(),
+    );
+  }
+
+  /**
+   * The seal an author hunt carries in its delegation. Only the validator runs it, decrypted,
+   * as a post-delegation action; sent as a transaction it is rejected.
+   */
+  sealFromAction(location: Vec3, salt: Uint8Array): TransactionInstruction {
+    return this.ix(
+      'seal_from_action',
+      {
+        creator: this.creator,
+        hunt: this.hunt,
+        treasure: this.addresses.treasure,
+        treasurePermission: this.addresses.treasurePermission,
+        ...this.permissionAccounts,
+      },
       new Writer().vec3(location).fixed(salt, 32).finish(),
     );
   }
