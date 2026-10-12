@@ -5,7 +5,7 @@ Terra Incognita is a global treasure hunt on Solana. A verifiable random number,
 **A treasure hunt where nobody knows where the treasure is. Not even us.**
 
 - Live app: https://terra-incognita-hunt.vercel.app
-- Video: `<VIDEO_URL>`
+- Video: https://youtu.be/n6tSIH6ZPv0
 - Review in five minutes: [JUDGES.md](JUDGES.md)
 - Every claim as a devnet link: [PROOF.md](PROOF.md)
 - What we claim and what we don't: [CLAIMS.md](CLAIMS.md)

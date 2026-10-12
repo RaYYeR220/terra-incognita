@@ -2,7 +2,7 @@
 
 A treasure hunt where nobody knows where the treasure is. Not even us. Everything below runs on Solana devnet and MagicBlock's TEE validator.
 
-Video: `<VIDEO_URL>`
+Video: https://youtu.be/n6tSIH6ZPv0
 
 ## 1. Play (2 minutes)
 
