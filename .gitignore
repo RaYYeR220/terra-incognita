@@ -7,7 +7,6 @@ dist/
 out/
 *.tsbuildinfo
 test-ledger/
-.vercel/
 
 # secrets and local config
 .env
@@ -15,30 +14,9 @@ test-ledger/
 !.env.example
 *.keypair.json
 keys/
+.vercel
 
 # editor and OS
 .DS_Store
 .idea/
 .vscode/
-
-# local tooling
-.remember/
-.claude/
-.agents/
-.playwright-mcp/
-.serena/
-MEMORY.md
-BRIEF.md
-ALTERNATIVES.md
-superpowers/
-docs/superpowers/
-*-internal/
-*-backup*
-*.bundle
-ui-prototypes/
-mockups/
-design-ref/
-variants/
-graphify-out/
-.vercel
-.env*
