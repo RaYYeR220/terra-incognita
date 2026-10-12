@@ -54,4 +54,10 @@ pub enum HuntError {
     NotRevealed,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("Entries of a void hunt are returned with refund_entry")]
+    UseRefund,
+    #[msg("Only entries of a void hunt are refunded")]
+    NotVoid,
+    #[msg("The sealed action belongs to another hunt")]
+    ForeignSeal,
 }

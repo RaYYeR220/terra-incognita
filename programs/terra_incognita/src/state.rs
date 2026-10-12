@@ -15,6 +15,12 @@ pub const MAX_CREATOR_BPS: u16 = 2_000;
 pub const PROBE_COOLDOWN_SECS: i64 = 3;
 /// A VRF request that was not answered within this window may be repeated.
 pub const VRF_RETRY_SECS: i64 = 60;
+/// Shortest time between the start (or creation) and the deadline.
+pub const MIN_PLAY_SECS: i64 = 120;
+/// Longest a hunt may wait before it starts.
+pub const MAX_START_DELAY_SECS: i64 = 7 * 86_400;
+/// Longest a hunt may run.
+pub const MAX_DURATION_SECS: i64 = 30 * 86_400;
 /// Lower bound of the lamports a hunt carries for rollup fees.
 pub const MIN_OPS_LAMPORTS: u64 = 5_000_000;
 /// Lamports placed in the escrow that pays for the settlement action on Solana.

@@ -42,8 +42,8 @@ import {
 // raw VRF output is opened so the location, salt, zone schedule and commitment can all be
 // re-derived from it.
 
-const DURATION_SECS = 75;
-const ZONE_INTERVAL_SECS = 15;
+const DURATION_SECS = 135;
+const ZONE_INTERVAL_SECS = 20;
 const ENTRY_FEE = 0.005 * LAMPORTS_PER_SOL;
 const PRIZE_SEED = 0.02 * LAMPORTS_PER_SOL;
 const CREATOR_BPS = 500;
@@ -222,7 +222,7 @@ describe("a hunt sealed by VRF inside the rollup", () => {
         await hunt.closeBoardIx(),
         await hunt.closeTreasureIx(),
       ],
-      [outsider],
+      [payer, north.owner, south.owner],
     );
     evidence(`- released and closed board, treasure and logbooks (base): \`${signature}\``);
   });

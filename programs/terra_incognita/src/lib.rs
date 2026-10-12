@@ -57,6 +57,7 @@ const ACTION_ESCROW_SEED: &[u8] = b"balance";
 /// Escrow slot the delegation program charges for post-commit actions.
 const ACTION_ESCROW_INDEX: u8 = 255;
 const TOP_UP_EPHEMERAL_BALANCE: u64 = 9;
+const CLOSE_EPHEMERAL_BALANCE: u64 = 11;
 const SETTLE_COMPUTE_UNITS: u32 = 120_000;
 const TICK_COMPUTE_UNITS: u32 = 400_000;
 /// Rollup slots per second.
@@ -76,8 +77,9 @@ pub mod terra_incognita {
                 && (1..=MAX_PLAYERS as u8).contains(&params.max_players)
                 && params.speed_kms > 0
                 && params.zone_interval_secs > 0
-                && params.deadline > now
-                && params.deadline > params.starts_at
+                && params.starts_at <= now + MAX_START_DELAY_SECS
+                && params.deadline >= params.starts_at.max(now) + MIN_PLAY_SECS
+                && params.deadline - params.starts_at.max(now) <= MAX_DURATION_SECS
                 && params.ops_lamports >= MIN_OPS_LAMPORTS
                 && params.title.len() <= MAX_TITLE_LEN
                 && params.clue.len() <= MAX_CLUE_LEN,
@@ -168,6 +170,7 @@ pub mod terra_incognita {
     /// Accounts that are already delegated are skipped, so the call can be repeated.
     pub fn delegate_hunt(ctx: Context<DelegateHunt>, id: u64) -> Result<()> {
         let hunt = read_hunt(&ctx.accounts.hunt)?;
+        require!(hunt.status == HuntStatus::Created, HuntError::WrongStatus);
         let config = || DelegateConfig {
             validator: Some(hunt.validator),
             ..Default::default()
@@ -266,6 +269,9 @@ pub mod terra_incognita {
     pub fn join(ctx: Context<Join>, operator: Pubkey) -> Result<()> {
         let hunt = read_hunt(&ctx.accounts.hunt)?;
         let now = Clock::get()?.unix_timestamp;
+        // The copy on Solana turns Live when `arm` commits; it stays Live until the
+        // finalized hunt comes back.
+        require!(hunt.status == HuntStatus::Live, HuntError::NotLive);
         require!(!hunt.finalized && now < hunt.deadline, HuntError::HuntClosed);
 
         let vault = &mut ctx.accounts.vault;
@@ -293,25 +299,18 @@ pub mod terra_incognita {
         let space = 8 + Logbook::INIT_SPACE;
         let lamports = Rent::get()?.minimum_balance(space) + permission_rent(2);
         let logbook_info = ctx.accounts.logbook.to_account_info();
-        invoke_signed(
-            &system_instruction::create_account(
-                &player_key,
-                logbook_info.key,
-                lamports,
-                space as u64,
-                &crate::ID,
-            ),
+        create_owned_account(
+            &player,
+            &logbook_info,
+            &ctx.accounts.system_program.to_account_info(),
+            space,
+            lamports,
             &[
-                player,
-                logbook_info.clone(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            &[&[
                 LOGBOOK_SEED,
                 hunt_key.as_ref(),
                 player_key.as_ref(),
                 &[ctx.bumps.logbook],
-            ]],
+            ],
         )?;
         let logbook = Logbook {
             hunt: hunt_key,
@@ -350,14 +349,17 @@ pub mod terra_incognita {
         require!(!vault.settled, HuntError::AlreadySettled);
         vault.settled = true;
 
-        let pot = vault
-            .prize_seed
-            .checked_add(vault.entry_total)
-            .ok_or(HuntError::Overflow)?;
-        let creator_cut = if hunt.status == HuntStatus::Void {
-            pot
+        // A void hunt hands the creator back the prize seed only; every entrant takes their
+        // own fee back with `refund_entry`.
+        let (pot, creator_cut) = if hunt.status == HuntStatus::Void {
+            (vault.prize_seed, 0)
         } else {
-            (vault.entry_total as u128 * hunt.creator_bps as u128 / 10_000) as u64
+            let pot = vault
+                .prize_seed
+                .checked_add(vault.entry_total)
+                .ok_or(HuntError::Overflow)?;
+            let cut = (vault.entry_total as u128 * hunt.creator_bps as u128 / 10_000) as u64;
+            (pot, cut)
         };
         let prize = pot - creator_cut;
 
@@ -372,6 +374,71 @@ pub mod terra_incognita {
         **ctx.accounts.creator.try_borrow_mut_lamports()? += creator_cut;
         msg!("settled: prize {} creator {}", prize, creator_cut);
         Ok(())
+    }
+
+    /// Returns an entrant's fee from the vault of a void hunt and closes their released
+    /// logbook, whose rent goes back to them as well. Anyone may send it.
+    pub fn refund_entry(ctx: Context<RefundEntry>) -> Result<()> {
+        let hunt = &ctx.accounts.hunt;
+        require!(
+            hunt.finalized && hunt.status == HuntStatus::Void,
+            HuntError::NotVoid
+        );
+        let fee = hunt.entry_fee;
+        let vault = &mut ctx.accounts.vault;
+        vault.entry_total = vault.entry_total.checked_sub(fee).ok_or(HuntError::Overflow)?;
+        vault.entrants = vault.entrants.checked_sub(1).ok_or(HuntError::Overflow)?;
+        let vault_info = vault.to_account_info();
+        let reserve = Rent::get()?.minimum_balance(vault_info.data_len());
+        require!(
+            vault_info.lamports() >= reserve.saturating_add(fee),
+            HuntError::Overflow
+        );
+        **vault_info.try_borrow_mut_lamports()? -= fee;
+        **ctx.accounts.owner.try_borrow_mut_lamports()? += fee;
+        Ok(())
+    }
+
+    /// Withdraws a hunt that was never delegated: closes the hunt, its board, treasure and
+    /// vault, prize seed included, back to the creator.
+    pub fn cancel_hunt(_ctx: Context<CancelHunt>) -> Result<()> {
+        Ok(())
+    }
+
+    /// Closes the escrow that pays for the settlement action once it is no longer needed,
+    /// and hands the creator everything the hunt account holds beyond its own rent.
+    pub fn reclaim_escrow(ctx: Context<ReclaimEscrow>) -> Result<()> {
+        let hunt = &ctx.accounts.hunt;
+        require!(
+            hunt.status == HuntStatus::Created || ctx.accounts.vault.settled,
+            HuntError::WrongStatus
+        );
+        let creator = hunt.creator;
+        let id = hunt.id.to_le_bytes();
+        let bump = [hunt.bump];
+        let hunt_info = ctx.accounts.hunt.to_account_info();
+        if ctx.accounts.action_escrow.lamports() > 0 {
+            let mut data = CLOSE_EPHEMERAL_BALANCE.to_le_bytes().to_vec();
+            data.push(ACTION_ESCROW_INDEX);
+            invoke_signed(
+                &Instruction {
+                    program_id: DELEGATION_PROGRAM_ID,
+                    accounts: vec![
+                        AccountMeta::new(hunt_info.key(), true),
+                        AccountMeta::new(ctx.accounts.action_escrow.key(), false),
+                        AccountMeta::new_readonly(ctx.accounts.system_program.key(), false),
+                    ],
+                    data,
+                },
+                &[
+                    hunt_info.clone(),
+                    ctx.accounts.action_escrow.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+                &[&[HUNT_SEED, creator.as_ref(), &id, &bump]],
+            )?;
+        }
+        sweep_surplus(&hunt_info, &ctx.accounts.creator.to_account_info())
     }
 
     /// Opens the hunt inside the rollup: makes the treasure unreadable for everyone and, in
@@ -464,12 +531,17 @@ pub mod terra_incognita {
 
     /// Author mode, run by the validator as the post-delegation action attached by
     /// `delegate_hunt_sealed`: makes the treasure private and places it in one step.
+    ///
+    /// `hunt` travels inside the encrypted arguments, so a copied ciphertext cannot seal a
+    /// different hunt with this hunt's location.
     pub fn seal_from_action(
         ctx: Context<SealFromAction>,
+        hunt: Pubkey,
         location: Vec3,
         salt: [u8; 32],
     ) -> Result<()> {
         let hunt_key = ctx.accounts.hunt.key();
+        require_keys_eq!(hunt, hunt_key, HuntError::ForeignSeal);
         require!(
             ctx.accounts.hunt.mode == HuntMode::Author,
             HuntError::WrongMode
@@ -806,6 +878,16 @@ pub mod terra_incognita {
             return Ok(());
         }
 
+        // A hunt that never went live ends void at its deadline, so the prize seed can go
+        // back to the creator.
+        if matches!(hunt.status, HuntStatus::Created | HuntStatus::Sealing) {
+            if now >= hunt.deadline {
+                hunt.status = HuntStatus::Void;
+                hunt.ended_at = now;
+            }
+            return Ok(());
+        }
+
         if hunt.status.is_terminal() && !hunt.finalized {
             reveal_and_release(
                 hunt,
@@ -911,12 +993,10 @@ pub mod terra_incognita {
     /// Closes the released board of a finalized hunt and returns its rent, together with
     /// whatever the hunt account holds beyond its own rent, to the creator.
     pub fn close_board(ctx: Context<CloseBoard>) -> Result<()> {
-        let hunt = ctx.accounts.hunt.to_account_info();
-        let keep = Rent::get()?.minimum_balance(hunt.data_len());
-        let surplus = hunt.lamports().saturating_sub(keep);
-        **hunt.try_borrow_mut_lamports()? -= surplus;
-        **ctx.accounts.creator.try_borrow_mut_lamports()? += surplus;
-        Ok(())
+        sweep_surplus(
+            &ctx.accounts.hunt.to_account_info(),
+            &ctx.accounts.creator.to_account_info(),
+        )
     }
 
     /// Closes the released treasure of a finalized hunt. The hunt account keeps the revealed
@@ -924,6 +1004,60 @@ pub mod terra_incognita {
     pub fn close_treasure(_ctx: Context<CloseTreasure>) -> Result<()> {
         Ok(())
     }
+}
+
+/// Moves everything `hunt` holds beyond its rent to `creator`.
+fn sweep_surplus<'info>(hunt: &AccountInfo<'info>, creator: &AccountInfo<'info>) -> Result<()> {
+    let keep = Rent::get()?.minimum_balance(hunt.data_len());
+    let surplus = hunt.lamports().saturating_sub(keep);
+    **hunt.try_borrow_mut_lamports()? -= surplus;
+    **creator.try_borrow_mut_lamports()? += surplus;
+    Ok(())
+}
+
+/// Creates a program-owned PDA, also when someone has already sent lamports to its address
+/// (which makes the system program's `create_account` fail).
+fn create_owned_account<'info>(
+    payer: &AccountInfo<'info>,
+    target: &AccountInfo<'info>,
+    system_program: &AccountInfo<'info>,
+    space: usize,
+    lamports: u64,
+    seeds: &[&[u8]],
+) -> Result<()> {
+    let present = target.lamports();
+    if present == 0 {
+        invoke_signed(
+            &system_instruction::create_account(
+                payer.key,
+                target.key,
+                lamports,
+                space as u64,
+                &crate::ID,
+            ),
+            &[payer.clone(), target.clone(), system_program.clone()],
+            &[seeds],
+        )?;
+        return Ok(());
+    }
+    if lamports > present {
+        invoke_signed(
+            &system_instruction::transfer(payer.key, target.key, lamports - present),
+            &[payer.clone(), target.clone(), system_program.clone()],
+            &[],
+        )?;
+    }
+    invoke_signed(
+        &system_instruction::allocate(target.key, space as u64),
+        &[target.clone(), system_program.clone()],
+        &[seeds],
+    )?;
+    invoke_signed(
+        &system_instruction::assign(target.key, &crate::ID),
+        &[target.clone(), system_program.clone()],
+        &[seeds],
+    )?;
+    Ok(())
 }
 
 /// Rollup rent of a permission account with room for `members` members.
@@ -1601,7 +1735,8 @@ pub struct CloseLogbook<'info> {
     #[account(
         seeds = [HUNT_SEED, hunt.creator.as_ref(), &hunt.id.to_le_bytes()],
         bump = hunt.bump,
-        constraint = hunt.finalized @ HuntError::NotFinalized
+        constraint = hunt.finalized @ HuntError::NotFinalized,
+        constraint = hunt.status != HuntStatus::Void @ HuntError::UseRefund
     )]
     pub hunt: Account<'info, Hunt>,
     #[account(
@@ -1611,9 +1746,89 @@ pub struct CloseLogbook<'info> {
         bump = logbook.bump
     )]
     pub logbook: Account<'info, Logbook>,
-    /// CHECK: the player who paid for the logbook.
+    /// The player who paid for the logbook decides when its record goes.
+    #[account(mut, address = logbook.owner)]
+    pub owner: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RefundEntry<'info> {
+    #[account(
+        seeds = [HUNT_SEED, hunt.creator.as_ref(), &hunt.id.to_le_bytes()],
+        bump = hunt.bump
+    )]
+    pub hunt: Account<'info, Hunt>,
+    #[account(mut, seeds = [VAULT_SEED, hunt.key().as_ref()], bump = hunt.vault_bump)]
+    pub vault: Account<'info, Vault>,
+    #[account(
+        mut,
+        close = owner,
+        seeds = [LOGBOOK_SEED, hunt.key().as_ref(), logbook.owner.as_ref()],
+        bump = logbook.bump
+    )]
+    pub logbook: Account<'info, Logbook>,
+    /// CHECK: the entrant, who receives the fee and the logbook's rent.
     #[account(mut, address = logbook.owner)]
     pub owner: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelHunt<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    #[account(
+        mut,
+        close = creator,
+        seeds = [HUNT_SEED, hunt.creator.as_ref(), &hunt.id.to_le_bytes()],
+        bump = hunt.bump,
+        has_one = creator,
+        constraint = hunt.status == HuntStatus::Created @ HuntError::WrongStatus
+    )]
+    pub hunt: Account<'info, Hunt>,
+    #[account(mut, close = creator, seeds = [BOARD_SEED, hunt.key().as_ref()], bump = hunt.board_bump)]
+    pub board: AccountLoader<'info, Board>,
+    #[account(
+        mut,
+        close = creator,
+        seeds = [TREASURE_SEED, hunt.key().as_ref()],
+        bump = hunt.treasure_bump
+    )]
+    pub treasure: Account<'info, Treasure>,
+    #[account(
+        mut,
+        close = creator,
+        seeds = [VAULT_SEED, hunt.key().as_ref()],
+        bump = hunt.vault_bump,
+        constraint = vault.entrants == 0 @ HuntError::WrongStatus
+    )]
+    pub vault: Account<'info, Vault>,
+}
+
+#[derive(Accounts)]
+pub struct ReclaimEscrow<'info> {
+    #[account(mut)]
+    pub creator: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [HUNT_SEED, hunt.creator.as_ref(), &hunt.id.to_le_bytes()],
+        bump = hunt.bump,
+        has_one = creator
+    )]
+    pub hunt: Account<'info, Hunt>,
+    #[account(seeds = [VAULT_SEED, hunt.key().as_ref()], bump = hunt.vault_bump)]
+    pub vault: Account<'info, Vault>,
+    /// CHECK: escrow of the hunt at the delegation program.
+    #[account(
+        mut,
+        seeds = [ACTION_ESCROW_SEED, hunt.key().as_ref(), &[ACTION_ESCROW_INDEX]],
+        bump,
+        seeds::program = DELEGATION_PROGRAM_ID
+    )]
+    pub action_escrow: UncheckedAccount<'info>,
+    /// CHECK: fixed address.
+    #[account(address = DELEGATION_PROGRAM_ID)]
+    pub delegation_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -1632,9 +1847,8 @@ pub struct CloseBoard<'info> {
         bump = hunt.board_bump
     )]
     pub board: AccountLoader<'info, Board>,
-    /// CHECK: the creator who paid for the board.
     #[account(mut, address = hunt.creator)]
-    pub creator: UncheckedAccount<'info>,
+    pub creator: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -1652,9 +1866,8 @@ pub struct CloseTreasure<'info> {
         bump = hunt.treasure_bump
     )]
     pub treasure: Account<'info, Treasure>,
-    /// CHECK: the creator who paid for the treasure.
     #[account(mut, address = hunt.creator)]
-    pub creator: UncheckedAccount<'info>,
+    pub creator: Signer<'info>,
 }
 
 #[cfg(test)]

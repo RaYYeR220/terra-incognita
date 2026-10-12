@@ -95,9 +95,11 @@ export async function wallet(name: string, minSol = 0): Promise<Keypair> {
     fs.writeFileSync(file, JSON.stringify(Array.from(keypair.secretKey)), { mode: 0o600 });
   }
   if (minSol > 0) {
-    const balance = await base.getBalance(keypair.publicKey);
     const wanted = Math.round(minSol * LAMPORTS_PER_SOL);
-    if (balance < wanted) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const balance = await base.getBalance(keypair.publicKey);
+      if (balance >= wanted) break;
+      // A dropped transfer simply gets sent again with a fresh blockhash.
       await sendBase(
         [
           SystemProgram.transfer({
@@ -107,7 +109,10 @@ export async function wallet(name: string, minSol = 0): Promise<Keypair> {
           }),
         ],
         [payer],
-      );
+        { timeoutMs: 30_000 },
+      ).catch((error) => {
+        if (attempt === 2) throw error;
+      });
     }
   }
   return keypair;
@@ -454,7 +459,11 @@ export class Hunt {
    */
   async delegateSealedIx(location: Vec3, salt: Uint8Array): Promise<TransactionInstruction> {
     const action = await this.sealFromActionIx(location, salt);
-    const actions = encryptedActions([action], TEE_VALIDATOR);
+    return this.delegateWithActionsIx(encryptedActions([action], TEE_VALIDATOR));
+  }
+
+  /** `delegate_hunt_sealed` carrying an already encoded actions payload. */
+  async delegateWithActionsIx(actions: Uint8Array): Promise<TransactionInstruction> {
     return program.methods
       .delegateHuntSealed(this.id, Buffer.from(actions))
       .accountsPartial({
@@ -474,7 +483,7 @@ export class Hunt {
 
   async sealFromActionIx(location: Vec3, salt: Uint8Array): Promise<TransactionInstruction> {
     return program.methods
-      .sealFromAction(location, Array.from(salt))
+      .sealFromAction(this.hunt, location, Array.from(salt))
       .accountsPartial({
         creator: this.creator.publicKey,
         hunt: this.hunt,
@@ -705,6 +714,40 @@ export class Hunt {
       .instruction();
   }
 
+  async refundEntryIx(owner: PublicKey) {
+    return program.methods
+      .refundEntry()
+      .accountsPartial({ hunt: this.hunt, vault: this.vault, logbook: this.logbook(owner), owner })
+      .instruction();
+  }
+
+  async cancelIx() {
+    return program.methods
+      .cancelHunt()
+      .accountsPartial({
+        creator: this.creator.publicKey,
+        hunt: this.hunt,
+        board: this.board,
+        treasure: this.treasure,
+        vault: this.vault,
+      })
+      .instruction();
+  }
+
+  async reclaimEscrowIx() {
+    return program.methods
+      .reclaimEscrow()
+      .accountsPartial({
+        creator: this.creator.publicKey,
+        hunt: this.hunt,
+        vault: this.vault,
+        actionEscrow: this.actionEscrow,
+        delegationProgram: DELEGATION_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+  }
+
   async closeTreasureIx() {
     return program.methods
       .closeTreasure()
@@ -746,6 +789,17 @@ export class Hunt {
 }
 
 export const statusOf = (hunt: any): string => Object.keys(hunt.status)[0];
+
+/** Lamports `account` gained (or lost) in a Solana transaction, read from its metadata. */
+export async function balanceChange(signature: string, account: PublicKey): Promise<number> {
+  const tx = await waitFor("the transaction details", () =>
+    base.getTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" }),
+  );
+  const keys = tx.transaction.message.getAccountKeys().staticAccountKeys;
+  const index = keys.findIndex((key) => key.equals(account));
+  if (index < 0) return 0;
+  return tx.meta!.postBalances[index] - tx.meta!.preBalances[index];
+}
 
 /** Whether `account` sits on Solana under the delegation program. */
 export async function delegatedOnBase(account: PublicKey): Promise<boolean> {

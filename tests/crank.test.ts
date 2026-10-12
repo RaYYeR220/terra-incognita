@@ -23,7 +23,7 @@ import { fromLatLon } from "./support/geo";
 // returns the hunt to Solana and refunds the creator.
 
 const ZONE_INTERVAL_SECS = 8;
-const DURATION_SECS = 40;
+const DURATION_SECS = 135;
 
 async function observeStage(hunt: Hunt, atLeast: number, timeoutMs: number) {
   return waitFor(

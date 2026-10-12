@@ -122,3 +122,49 @@ export function encryptedActions(
   }
   return w.done();
 }
+
+/** Byte ranges of each instruction's encrypted data in an encoded actions payload. */
+function encryptedRanges(payload: Uint8Array): { start: number; end: number }[] {
+  const view = Buffer.from(payload);
+  let at = 2;
+  const vecLen = () => {
+    const n = view.readUInt32LE(at);
+    at += 4;
+    return n;
+  };
+  const skipVec = () => {
+    const n = vecLen();
+    at += n;
+  };
+  const signers = vecLen();
+  at += 32 * signers;
+  for (let i = vecLen(); i > 0; i--) {
+    if (view[at++] === 0) at += 32;
+    else skipVec();
+  }
+  const ranges: { start: number; end: number }[] = [];
+  for (let i = vecLen(); i > 0; i--) {
+    at += 1;
+    for (let j = vecLen(); j > 0; j--) {
+      if (view[at++] === 0) at += 1;
+      else skipVec();
+    }
+    skipVec();
+    const start = at;
+    skipVec();
+    ranges.push({ start, end: at });
+  }
+  return ranges;
+}
+
+/** The encrypted suffix (length-prefixed) of the first instruction of a payload. */
+export function encryptedSuffix(payload: Uint8Array): Uint8Array {
+  const { start, end } = encryptedRanges(payload)[0];
+  return payload.slice(start, end);
+}
+
+/** `payload` with the encrypted suffix of its first instruction replaced by `suffix`. */
+export function withEncryptedSuffix(payload: Uint8Array, suffix: Uint8Array): Uint8Array {
+  const { start, end } = encryptedRanges(payload)[0];
+  return concat(payload.slice(0, start), suffix, payload.slice(end));
+}

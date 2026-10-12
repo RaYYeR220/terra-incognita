@@ -1,9 +1,11 @@
 import { expect } from "chai";
 import { Keypair } from "@solana/web3.js";
 import { Vec3, canonical, commitment, fromLatLon } from "./support/geo";
+import { encryptedActions, encryptedSuffix, withEncryptedSuffix } from "./support/sealed";
 import {
   Hunt,
   TEE_RPC,
+  TEE_VALIDATOR,
   TransactionFailed,
   base,
   delegatedOnBase,
@@ -27,7 +29,7 @@ import {
 // delegation program on Solana and run by the validator inside the rollup.
 
 const TREASURE: Vec3 = fromLatLon(-22.9519, -43.2105);
-const DURATION_SECS = 45;
+const DURATION_SECS = 135;
 
 const contains = (haystack: Uint8Array, needle: Uint8Array) =>
   Buffer.from(haystack).indexOf(Buffer.from(needle)) >= 0;
@@ -142,6 +144,53 @@ describe("an author hunt sealed through an encrypted post-delegation action", ()
     evidence(`- ${checked} rollup transactions naming the hunt fetched as an outsider (base64 and json): none carries the location or the salt`);
   });
 
+  it("cannot have its encrypted seal replayed into another hunt", async () => {
+    const attacker = await wallet("replayer", 0.15);
+    const copy = Hunt.fresh(attacker);
+    evidence(`- attacker's hunt \`${copy.hunt.toBase58()}\` created (base): \`${await copy.create({ mode: "author", durationSecs: DURATION_SECS })}\``);
+    await waitFor("the copy on Solana", () => copy.huntState(base));
+
+    // The cleartext parts (signer, accounts) are the attacker's own; only the creator's
+    // encrypted arguments are lifted from the creator's transaction on Solana.
+    const original = await base.getTransaction(delegation, { maxSupportedTransactionVersion: 0 });
+    const data = Buffer.from(original!.transaction.message.compiledInstructions.at(-1)!.data);
+    const lifted = encryptedSuffix(data.subarray(8 + 8 + 4, 8 + 8 + 4 + data.readUInt32LE(16)));
+    const own = encryptedActions(
+      [await copy.sealFromActionIx(fromLatLon(0, 0), new Uint8Array(32))],
+      TEE_VALIDATOR,
+    );
+    const forged = withEncryptedSuffix(own, lifted);
+    const replay = await sendBase([await copy.delegateWithActionsIx(forged)], [attacker], { computeUnits: 800_000 });
+    evidence(`- the creator's ${lifted.length}-byte encrypted arguments spliced into the attacker's own sealed delegation (base): \`${replay}\``);
+
+    const armIx = await copy.armIx(attacker.publicKey);
+    let outcome = "";
+    await waitFor(
+      "the validator to run (and reject) the copied action",
+      async () => {
+        const treasureOnBase = await copy.treasureState(base);
+        const backOnBase = await ownedOnBase(copy.treasure);
+        try {
+          await sendTee([armIx], [attacker], { computeUnits: 400_000 });
+          outcome = "armed";
+          return true;
+        } catch (error) {
+          if (!(error instanceof TransactionFailed)) throw error;
+          outcome = `arm refused: ${error.code}; treasure back on Solana: ${backOnBase}; sealed there: ${treasureOnBase?.sealed}`;
+          return backOnBase;
+        }
+      },
+      90_000,
+      3_000,
+    ).catch(() => undefined);
+    evidence(`- after the copied action: ${outcome}`);
+    expect(outcome).to.not.equal("armed");
+    const treasure = await copy.treasureState(base);
+    expect(treasure.sealed).to.equal(false);
+    expect([...treasure.location]).to.deep.equal([0, 0, 0]);
+    evidence("- the attacker's treasure is unsealed with no location: the copied ciphertext names the creator's hunt and is refused");
+  });
+
   it("ends void, reveals the same location on Solana and returns the rent", async () => {
     const deadline = (await hunt.huntState(teeAnonymous)).deadline.toNumber();
     await waitFor("the deadline", async () => Date.now() / 1000 > deadline + 2, (DURATION_SECS + 60) * 1000, 1_000);
@@ -164,6 +213,6 @@ describe("an author hunt sealed through an encrypted post-delegation action", ()
     for (const account of [hunt.board, hunt.treasure]) {
       await waitFor(`${account.toBase58()} back on Solana`, () => ownedOnBase(account), 180_000, 1_000);
     }
-    evidence(`- board and treasure closed (base): \`${await sendBase([await hunt.closeBoardIx(), await hunt.closeTreasureIx()], [outsider])}\``);
+    evidence(`- board and treasure closed (base): \`${await sendBase([await hunt.closeBoardIx(), await hunt.closeTreasureIx()], [payer])}\``);
   });
 });

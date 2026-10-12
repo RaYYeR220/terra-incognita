@@ -333,8 +333,9 @@ describe("a hunt from creation to payout", () => {
         await hunt.closeBoardIx(),
         await hunt.closeTreasureIx(),
       ],
-      [outsider],
+      [payer, alice.owner, bob.owner],
     );
+    evidence(`- creator reclaims the action escrow (base): \`${await sendBase([await hunt.reclaimEscrowIx()], [payer])}\``);
     evidence(`- close logbooks, board and treasure (base): \`${closing}\``);
     for (const account of accounts) {
       await waitFor(

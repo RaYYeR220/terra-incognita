@@ -165,7 +165,7 @@ describe("refusals", () => {
       sendBase([await hunt.settleIx(first.owner.publicKey)], [outsider]),
     );
     await refused("close the board while the hunt is still delegated", "AccountOwnedByWrongProgram", async () =>
-      sendBase([await hunt.closeBoardIx()], [outsider]),
+      sendBase([await hunt.closeBoardIx()], [payer]),
     );
   });
 
