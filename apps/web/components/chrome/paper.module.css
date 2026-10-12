@@ -1,0 +1,16 @@
+.h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 4vw, 52px); line-height: 1.06; color: var(--t5); text-shadow: 3px 4px 0 var(--t2); }
+.lede { font-size: 18px; line-height: 1.55; margin-top: 14px; max-width: 38em; }
+.h2 { font-family: var(--display); font-weight: 400; font-size: 24px; color: var(--t5); line-height: 1.1; }
+.card { background: var(--cream); border-radius: var(--radius); box-shadow: 6px 8px 0 rgba(12, 47, 49, 0.4); padding: 20px 22px; }
+.dark { background: var(--t5); color: var(--cream); }
+.dark .h2 { color: var(--cream); }
+.muted { color: var(--ink-soft); }
+.state {
+  margin-top: 28px; background: var(--kraft); border-radius: var(--radius); padding: 18px 20px; line-height: 1.5;
+  box-shadow: 4px 5px 0 rgba(12, 47, 49, 0.3); max-width: 40em;
+}
+.state b { display: block; font-family: var(--display); font-weight: 400; color: var(--t5); font-size: 19px; margin-bottom: 4px; }
+.state .btn { margin-top: 12px; }
+.skeleton { background: repeating-linear-gradient(90deg, var(--t1) 0 40px, #dcefe6 40px 80px); border-radius: var(--radius); animation: shimmer 1.4s linear infinite; background-size: 160px 100%; }
+@keyframes shimmer { to { background-position: 160px 0; } }
+.mono { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

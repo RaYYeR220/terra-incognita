@@ -1,0 +1,23 @@
+.layout { display: grid; grid-template-columns: 7fr 5fr; gap: 48px; margin-top: 34px; align-items: start; }
+.hint { margin-top: 12px; font-size: 15px; line-height: 1.5; color: var(--t5); max-width: 36em; }
+.fields { display: grid; gap: 18px; }
+.field { display: grid; gap: 6px; }
+.field > span { font-weight: 700; color: var(--t5); }
+.field input {
+  background: var(--cream); border: 0; border-radius: 5px; padding: 11px 12px; font-size: 16px;
+  box-shadow: inset 2px 3px 0 rgba(14, 51, 54, 0.18), 3px 4px 0 rgba(14, 51, 54, 0.2);
+}
+.field small { color: var(--ink-soft); font-size: 13px; }
+.problems { list-style: none; color: var(--scorch); font-weight: 700; display: grid; gap: 4px; }
+.actions { display: grid; gap: 10px; justify-items: start; margin-top: 6px; }
+.actions .btn { font-size: 20px; }
+.walletLink { background: none; border: 0; padding: 0; color: var(--t5); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.cost { font-size: 14px; color: var(--ink-soft); }
+.steps { list-style: none; display: grid; gap: 6px; background: var(--cream); border-radius: var(--radius); padding: 14px 16px; box-shadow: 4px 5px 0 rgba(12, 47, 49, 0.3); }
+.steps li { padding-left: 26px; position: relative; color: var(--ink-soft); }
+.steps li::before { content: ''; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--t3); }
+.stepDone { color: var(--t5) !important; font-weight: 700; }
+.stepDone::before { background: var(--coral); border-color: var(--coral) !important; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; gap: 28px; }
+}

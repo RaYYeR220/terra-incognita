@@ -16,7 +16,9 @@
     "build:packages": "npm run build -w @terra-incognita/core && npm run build -w @terra-incognita/sdk && npm run build -w @terra-incognita/hunter",
     "test:packages": "npm test -w @terra-incognita/core -w @terra-incognita/sdk -w @terra-incognita/hunter",
     "verify": "tsx scripts/verify-hunt.ts",
-    "demo": "tsx scripts/demo-hunt.ts"
+    "demo": "tsx scripts/demo-hunt.ts",
+    "build:web": "npm run build:packages && npm run build -w @terra-incognita/web",
+    "dev:web": "npm run dev -w @terra-incognita/web"
   },
   "devDependencies": {
     "@coral-xyz/anchor": "0.32.1",

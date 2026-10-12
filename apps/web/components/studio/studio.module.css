@@ -1,0 +1,21 @@
+.studio { position: relative; }
+.tabs { display: flex; gap: 10px; margin: 22px 0 6px; flex-wrap: wrap; }
+.tabs button {
+  font-weight: 700; font-size: 15px; color: var(--t5); background: var(--t1); border: 0;
+  border-radius: 6px 6px 0 0; padding: 10px 14px 12px; cursor: pointer;
+  box-shadow: 3px 4px 0 rgba(14, 51, 54, 0.25); transform: translateY(6px); transition: transform 0.15s;
+}
+.tabs button[aria-pressed='true'] { background: var(--t5); color: var(--cream); transform: none; }
+.knobs { display: grid; gap: 6px; margin-top: 8px; }
+.knob { display: grid; grid-template-columns: 6.5em 1fr 6.5em; align-items: center; gap: 14px; }
+.knob span { font-weight: 700; font-size: 15px; color: var(--t5); }
+.knob output { font-weight: 700; font-size: 15px; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.riddle {
+  display: block; width: 100%; margin-top: 14px; font-size: 16px; color: var(--ink);
+  background: var(--kraft) repeating-linear-gradient(transparent 0 26px, rgba(27, 79, 82, 0.25) 26px 27px);
+  border: 0; border-radius: 4px; padding: 6px 12px; line-height: 27px;
+  box-shadow: 3px 4px 0 rgba(14, 51, 54, 0.3); resize: vertical; min-height: 62px;
+}
+@media (max-width: 720px) {
+  .knob { grid-template-columns: 5.6em 1fr 5.6em; gap: 10px; }
+}
