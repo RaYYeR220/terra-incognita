@@ -44,6 +44,8 @@ export interface PublicView {
   settlement: Settlement | null;
   /** Revealed after the hunt: the treasure's position. Null while it is sealed. */
   revealed: Vec3 | null;
+  /** New ships can still join. */
+  joinable: boolean;
 }
 
 export interface Identity {
@@ -59,6 +61,8 @@ export interface MyView {
   identity: Identity | null;
   /** Board index of my ship, or -1 before embarking. */
   shipIndex: number;
+  /** I hold an entry in this hunt (joined, whether or not my ship set off). */
+  joined: boolean;
   /** My private logbook, oldest first. */
   logbook: readonly LogEntry[];
   pending: Pending;
@@ -100,12 +104,15 @@ export interface HuntSession {
   probe(): Promise<LogEntry>;
   /** Asks for the treasure's coordinates as an outsider. The answer is always empty. */
   attemptRead(): Promise<ReadAttempt>;
+  /** Takes my entry fee back from a hunt that ended without a single sounding. */
+  claimRefund?(): Promise<{ signature: string; explorerUrl: string }>;
   dispose(): void;
 }
 
 export const EMPTY_ME: MyView = {
   identity: null,
   shipIndex: -1,
+  joined: false,
   logbook: [],
   pending: null,
   strikeUnconfirmed: false,

@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { HuntStatus, MAX_PROBES, bytesToHex, isTerminal } from '@terra-incognita/core';
 import type { LogEntry, Vec3 } from '@terra-incognita/core';
-import { PlayerSession, TerraTxError, findSettlement, keypairSigner, treasureAddress, watchHunt } from '@terra-incognita/sdk';
+import { PlayerSession, TerraTxError, findSettlement, isJoinable, keypairSigner, treasureAddress, watchHunt } from '@terra-incognita/sdk';
 import type { HuntAccount, HuntSnapshot, HuntWatch, TerraClient, TerraSigner } from '@terra-incognita/sdk';
 
 import { JOIN_FUNDING, terraClient } from '../chain/client';
@@ -93,6 +93,7 @@ export class ChainHuntSession implements HuntSession {
         onJoined: () => this.patchMe({ pending: 'embark' }),
       });
       this.player = session;
+      this.patchMe({ joined: true });
       storage()?.setItem(sessionKey(this.huntId, this.signer.publicKey.toBase58()), JSON.stringify(session.serialize()));
     });
     await this.refreshLogbook();
@@ -108,6 +109,13 @@ export class ChainHuntSession implements HuntSession {
     const result = await this.run('probe', () => this.player!.probe({ wait: true }));
     await this.refreshLogbook();
     return result.entry;
+  }
+
+  async claimRefund(): Promise<{ signature: string; explorerUrl: string }> {
+    if (!this.player) throw new Error('You have no entry in this hunt.');
+    const result = await this.player.claimRefund(this.signer);
+    storage()?.removeItem(sessionKey(this.huntId, this.signer.publicKey.toBase58()));
+    return { signature: result.refund, explorerUrl: this.client.explorerTx(result.refund) };
   }
 
   async attemptRead(): Promise<ReadAttempt> {
@@ -160,6 +168,7 @@ export class ChainHuntSession implements HuntSession {
     if (!saved) return;
     try {
       this.player = await PlayerSession.restore(this.client, JSON.parse(saved));
+      this.patchMe({ joined: true });
       await this.refreshLogbook();
     } catch {
       this.player = null;
@@ -236,9 +245,10 @@ export class ChainHuntSession implements HuntSession {
       winnerShip: winnerShip >= 0 ? winnerShip : null,
       settlement: previous,
       revealed: hunt.revealedLocation,
+      joinable: isJoinable(hunt, Math.floor(this.now())),
     };
     const strikeUnconfirmed = this.snapshot.me.logbook.some((e) => e.band === 0) && hunt.status === HuntStatus.Live;
-    this.update({ phase: 'ready', info, view, me: { ...this.snapshot.me, shipIndex, strikeUnconfirmed } });
+    this.update({ phase: 'ready', info, view, me: { ...this.snapshot.me, shipIndex, joined: this.player !== null, strikeUnconfirmed } });
     if (isTerminal(hunt.status) && !previous && !this.settlementTimer) this.pollSettlement(0);
   }
 

@@ -2,10 +2,10 @@
 
 import { HuntStatus } from '@terra-incognita/core';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { fmtSol, shortHash } from '@/lib/format';
-import type { HuntInfo, PublicView } from '@/lib/session/types';
+import type { HuntInfo, HuntSession, PublicView } from '@/lib/session/types';
 import { useFocusTrap } from '@/lib/useFocusTrap';
 
 import s from './panels.module.css';
@@ -25,14 +25,29 @@ export function EndCard({
   info,
   view,
   myShip,
+  joined,
+  session,
   onClose,
 }: {
   info: HuntInfo;
   view: PublicView;
   myShip: number;
+  joined: boolean;
+  session: HuntSession | null;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [refund, setRefund] = useState<{ phase: 'idle' | 'busy' } | { phase: 'done'; url: string; signature: string } | { phase: 'error'; error: string }>({ phase: 'idle' });
+  const claim = async () => {
+    if (!session?.claimRefund) return;
+    setRefund({ phase: 'busy' });
+    try {
+      const r = await session.claimRefund();
+      setRefund({ phase: 'done', url: r.explorerUrl, signature: r.signature });
+    } catch (e) {
+      setRefund({ phase: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
+  };
   useFocusTrap(ref, true, onClose);
   const winner = view.winnerShip;
   const mine = winner !== null && winner === myShip;
@@ -52,7 +67,9 @@ export function EndCard({
     line = `The clock ran out. ${payout}`;
   } else {
     title = 'Nobody sounded';
-    line = 'The clock ran out before a single sounding. The pot goes back.';
+    line = joined && onChain
+      ? 'This hunt ended with no soundings — reclaim your entry fee.'
+      : 'The clock ran out before a single sounding. The prize goes back to its creator and every entrant can take their fee back.';
   }
 
   return (
@@ -76,6 +93,20 @@ export function EndCard({
           )
         ) : !onChain && winner !== null ? (
           <p className={s.sub}>A practice hunt against the simulator: nothing was paid.</p>
+        ) : null}
+        {view.status === HuntStatus.Void && joined && onChain && session?.claimRefund ? (
+          <div className={s.refund} data-testid="refund">
+            {refund.phase === 'done' ? (
+              <a className={s.tx} href={refund.url} target="_blank" rel="noreferrer" data-testid="refund-link">
+                Refund transaction {shortHash(refund.signature)}
+              </a>
+            ) : (
+              <button type="button" className="btn" onClick={() => void claim()} disabled={refund.phase === 'busy'}>
+                {refund.phase === 'busy' ? 'Reclaiming…' : 'Reclaim my entry fee'}
+              </button>
+            )}
+            {refund.phase === 'error' ? <p className={s.sub} role="alert">{refund.error}</p> : null}
+          </div>
         ) : null}
         <div className={s.endActions}>
           <Link className="btn" href={`/proof/${info.network === 'simulator' ? 'demo' : info.id}`}>

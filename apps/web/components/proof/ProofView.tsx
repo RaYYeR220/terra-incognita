@@ -2,7 +2,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { BAND_NAMES, fromLatLon, isTerminal, toLatLon } from '@terra-incognita/core';
-import { DEMO_CLUE, buildProofReport, decodeTreasure, explorerAddress, listHunts, treasureAddress } from '@terra-incognita/sdk';
+import { DEMO_CLUE, PlayerSession, buildProofReport, decodeTreasure, explorerAddress, keypairSigner, listHunts, treasureAddress } from '@terra-incognita/sdk';
 import type { ProofReport } from '@terra-incognita/sdk';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import p from '@/components/chrome/paper.module.css';
 import { terraClient } from '@/lib/chain/client';
+import { guestKeypair } from '@/lib/session/chain-session';
 import { fmtKm, fmtSol, latLonText, shortHash, timeOfDay } from '@/lib/format';
 import { vecText } from '@/lib/geo';
 
@@ -35,6 +36,39 @@ export function ProofView({ id }: { id: string }) {
   const [load, setLoad] = useState<Load>(id === 'demo' ? { phase: 'finding' } : { phase: 'loading' });
   const [tamper, setTamper] = useState(false);
   const [read, setRead] = useState<string | null>(null);
+  const [refund, setRefund] = useState<{ phase: 'none' | 'guest' | 'wallet' | 'busy' } | { phase: 'done'; url: string; signature: string } | { phase: 'error'; error: string }>({ phase: 'none' });
+
+  // A void hunt: if this browser holds an entry in it, offer the entry fee back.
+  const status = load.phase === 'ready' ? load.report.status : null;
+  useEffect(() => {
+    if (status !== 'void') return;
+    let saved: string[] = [];
+    try {
+      saved = Object.keys(window.localStorage).filter((k) => k.startsWith(`terra:session:${id}:`));
+    } catch {
+      saved = [];
+    }
+    if (!saved.length) return;
+    const guest = guestKeypair().publicKey.toBase58();
+    setRefund({ phase: saved.some((k) => k.endsWith(`:${guest}`)) ? 'guest' : 'wallet' });
+  }, [status, id]);
+
+  const claim = async () => {
+    setRefund({ phase: 'busy' });
+    try {
+      const burner = guestKeypair();
+      const key = `terra:session:${id}:${burner.publicKey.toBase58()}`;
+      const data = window.localStorage.getItem(key);
+      if (!data) throw new Error('This browser holds no entry in this hunt.');
+      const client = terraClient();
+      const session = await PlayerSession.restore(client, JSON.parse(data));
+      const result = await session.claimRefund(keypairSigner(burner));
+      window.localStorage.removeItem(key);
+      setRefund({ phase: 'done', signature: result.refund, url: client.explorerTx(result.refund) });
+    } catch (e) {
+      setRefund({ phase: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
+  };
 
   useEffect(() => {
     if (id !== 'demo') return;
@@ -146,6 +180,21 @@ export function ProofView({ id }: { id: string }) {
         </div>
       </div>
       <p className={s.verdictLine}>{v.line}</p>
+      {refund.phase !== 'none' ? (
+        <div className={p.state} data-testid="refund">
+          <b>This hunt ended with no soundings — reclaim your entry fee.</b>
+          {refund.phase === 'done' ? (
+            <a href={refund.url} target="_blank" rel="noreferrer" data-testid="refund-link">Refund transaction {shortHash(refund.signature)}</a>
+          ) : refund.phase === 'wallet' ? (
+            <Link className="btn" href={`/hunt/${id}`}>Reclaim it with your wallet</Link>
+          ) : (
+            <button type="button" className="btn" onClick={() => void claim()} disabled={refund.phase === 'busy'}>
+              {refund.phase === 'busy' ? 'Reclaiming…' : 'Reclaim my entry fee'}
+            </button>
+          )}
+          {refund.phase === 'error' ? <p role="alert">{refund.error}</p> : null}
+        </div>
+      ) : null}
       {r.verdict !== 'unfinished' ? (
         <label className={s.tamper}>
           <input type="checkbox" checked={tamper} onChange={(e) => setTamper(e.target.checked)} />

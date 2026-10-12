@@ -2,7 +2,7 @@
 
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { MAX_CLUE_BYTES, MAX_CREATOR_BPS, MAX_TITLE_BYTES, fromLatLon } from '@terra-incognita/core';
-import { createHunt } from '@terra-incognita/sdk';
+import { LIMITS, TerraError, createHunt } from '@terra-incognita/sdk';
 import type { CreateStep } from '@terra-incognita/sdk';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -40,6 +40,7 @@ export function StudioForm() {
   const [prize, setPrize] = useState(0.05);
   const [fee, setFee] = useState(0.01);
   const [minutes, setMinutes] = useState(20);
+  const [startsIn, setStartsIn] = useState(0);
   const [share, setShare] = useState(10);
   const [run, setRun] = useState<Run>({ phase: 'idle' });
 
@@ -49,6 +50,11 @@ export function StudioForm() {
   if (self && !clue.trim()) problems.push('Write the riddle players will get.');
   if (bytes(clue) > MAX_CLUE_BYTES) problems.push(`The riddle is too long: ${MAX_CLUE_BYTES} bytes at most.`);
   if (!(prize >= 0.01)) problems.push('Put up at least 0.01 SOL.');
+  const minPlay = LIMITS.minPlaySecs + 15;
+  if (!(minutes * 60 >= minPlay)) problems.push(`The clock must run at least ${Math.floor(minPlay / 60)} min ${minPlay % 60} s.`);
+  if (minutes * 60 > LIMITS.maxDurationSecs) problems.push(`The clock can run at most ${LIMITS.maxDurationSecs / 86_400} days.`);
+  if (!(startsIn >= 0)) problems.push('The hunt starts now or later, not in the past.');
+  if (startsIn * 60 > LIMITS.maxStartDelaySecs) problems.push(`The hunt can start at most ${LIMITS.maxStartDelaySecs / 86_400} days from now.`);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +72,7 @@ export function StudioForm() {
         entryFee: Math.round(fee * LAMPORTS_PER_SOL),
         creatorBps: Math.min(MAX_CREATOR_BPS, share * 100),
         durationSecs,
+        startsInSecs: Math.round(startsIn * 60),
         zoneIntervalSecs: Math.max(30, Math.round(durationSecs / 10)),
         onStep: (step) => {
           done.push(step);
@@ -74,7 +81,8 @@ export function StudioForm() {
       });
       setRun({ phase: 'done', hunt: created.hunt.toBase58(), done: [...done] });
     } catch (error) {
-      setRun({ phase: 'error', error: error instanceof Error ? error.message : String(error), done: [...done] });
+      const text = error instanceof TerraError && error.code === 'InvalidParams' ? `The program would refuse these settings (${error.message.replace(/^invalid hunt parameters: /, '')}).` : error instanceof Error ? error.message : String(error);
+      setRun({ phase: 'error', error: text, done: [...done] });
     }
   };
 
@@ -117,12 +125,23 @@ export function StudioForm() {
         <div className={st.knobs}>
           <label className={st.knob}><span>Prize</span><input className="pull" type="range" min={0.01} max={2} step={0.01} value={prize} onChange={(e) => setPrize(+e.target.value)} /><output>{fmtSol(prize)}</output></label>
           <label className={st.knob}><span>Entry fee</span><input className="pull" type="range" min={0} max={0.2} step={0.005} value={fee} onChange={(e) => setFee(+e.target.value)} /><output>{fee ? fmtSol(fee) : 'free'}</output></label>
-          <label className={st.knob}><span>Clock</span><input className="pull" type="range" min={5} max={120} step={5} value={minutes} onChange={(e) => setMinutes(+e.target.value)} /><output>{clockText(minutes)}</output></label>
+          <label className={st.knob}><span>Clock</span><input className="pull" type="range" min={1} max={240} step={1} value={Math.min(240, minutes)} onChange={(e) => setMinutes(+e.target.value)} /><output>{clockText(minutes)}</output></label>
           <label className={st.knob}><span>Your share</span><input className="pull" type="range" min={0} max={MAX_CREATOR_BPS / 100} step={1} value={share} onChange={(e) => setShare(+e.target.value)} /><output>{share}% of entries</output></label>
         </div>
 
-        {problems.length && (title || clue) ? (
-          <ul className={f.problems} role="alert">
+        <div className={f.pair}>
+          <label className={f.field}>
+            <span>Clock, minutes</span>
+            <input type="number" inputMode="numeric" min={1} value={Number.isFinite(minutes) ? minutes : ''} onChange={(e) => setMinutes(e.target.valueAsNumber)} data-testid="studio-clock" />
+          </label>
+          <label className={f.field}>
+            <span>Starts in, minutes</span>
+            <input type="number" inputMode="numeric" min={0} value={Number.isFinite(startsIn) ? startsIn : ''} onChange={(e) => setStartsIn(e.target.valueAsNumber)} data-testid="studio-starts" />
+          </label>
+        </div>
+
+        {problems.length && (title || clue || minutes * 60 < minPlay || startsIn !== 0) ? (
+          <ul className={f.problems} role="alert" data-testid="studio-problems">
             {problems.map((x) => <li key={x}>{x}</li>)}
           </ul>
         ) : null}

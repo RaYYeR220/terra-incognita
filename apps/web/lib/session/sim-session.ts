@@ -108,6 +108,7 @@ export class SimHuntSession implements HuntSession {
           ...this.snapshot.me,
           identity: { kind: 'guest', label: 'guest' },
           shipIndex: msg.shipIndex,
+          joined: true,
           logbook: msg.logbook,
           strikeUnconfirmed,
         },

@@ -150,6 +150,7 @@ function snapshot(hunt: SimHunt): FromSim {
           ? { shipIndex: winnerShip, payoutSol: Math.round(pot * 1000) / 1000, signature: null, explorerUrl: null }
           : null,
       revealed: ended ? hunt.reveal().revealedLocation : null,
+      joinable: !ended,
     },
     shipIndex,
     logbook: hunt.logbook(ME),

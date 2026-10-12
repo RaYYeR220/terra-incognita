@@ -7,7 +7,8 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { runChainBots } from '@terra-incognita/hunter';
 import type { ChainBot, PersonalityName } from '@terra-incognita/hunter';
-import { TerraClient, sweepAccounts } from '@terra-incognita/sdk';
+import { HuntStatus } from '@terra-incognita/core';
+import { TerraClient, claimRefund, keypairSigner, sweepAccounts, waitForSettlement } from '@terra-incognita/sdk';
 import type { ClientOptions } from '@terra-incognita/sdk';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -35,15 +36,15 @@ async function start(msg: Extract<ToBots, { type: 'start' }>): Promise<void> {
   if (!res.ok || !body.treasury) throw new Error(body.error ?? 'The faucet could not fund the bots.');
   const treasury = new PublicKey(body.treasury);
 
-  const bots: ChainBot[] = keys.map((owner, i) => ({
-    name: `${LINEUP[i]}-${owner.publicKey.toBase58().slice(0, 4)}`,
-    owner,
-    personality: LINEUP[i] as PersonalityName,
-    seed: (Date.now() % 1_000_000) + i,
-  }));
-  post({ type: 'funded', bots: bots.map((b) => ({ name: b.name, personality: b.personality, key: b.owner.publicKey.toBase58() })) });
-
   try {
+    const bots: ChainBot[] = keys.map((owner, i) => ({
+      name: `${LINEUP[i]}-${owner.publicKey.toBase58().slice(0, 4)}`,
+      owner,
+      personality: LINEUP[i] as PersonalityName,
+      seed: (Date.now() % 1_000_000) + i,
+    }));
+    post({ type: 'funded', bots: bots.map((b) => ({ name: b.name, personality: b.personality, key: b.owner.publicKey.toBase58() })) });
+
     await runChainBots(client, hunt, bots, {
       keeperSecs: 3,
       onEvent: (event) => {
@@ -55,7 +56,14 @@ async function start(msg: Extract<ToBots, { type: 'start' }>): Promise<void> {
         post({ type: 'event', bot: event.bot, kind: event.kind, detail });
       },
     });
+    // A void hunt hands every entry fee back; each bot signs for its own. In a hunt with
+    // soundings the logbooks stay open on Solana, because the proof is built from them.
+    const ended = await waitForSettlement(client, hunt).catch(() => null);
+    if (ended?.hunt.status === HuntStatus.Void) {
+      for (const owner of keys) await claimRefund(client, hunt, owner.publicKey, keypairSigner(owner)).catch(() => undefined);
+    }
   } finally {
+    // Whatever happened above, every bot sends what it holds back to the treasury.
     const swept = await sweepAccounts(client, keys, treasury).catch(() => 0);
     post({ type: 'finished', sweptLamports: swept });
   }

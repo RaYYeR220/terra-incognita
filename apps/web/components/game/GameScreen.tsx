@@ -143,6 +143,10 @@ export function GameScreen({ huntId, sim, course }: { huntId: string; sim: boole
       if (me.pending) return;
       const dest = lonLatToVec(at);
       const ok = inZone(dest, view.zone);
+      if (!ship && !me.joined && !view.joinable) {
+        say('This hunt is not taking new ships. Open the list of hunts to find a live one.');
+        return;
+      }
       if (!ship) {
         setProposal({ at, kind: 'embark', ok, text: ok ? `Set off from ${vecText(dest)}` : 'Outside the search zone' });
         return;
@@ -155,7 +159,7 @@ export function GameScreen({ huntId, sim, course }: { huntId: string; sim: boole
       const secs = travelSecs(ship.to, dest, info.speedKms);
       setProposal({ at, kind: 'course', ok, text: ok ? `${fmtKm(km)} · ${secs} s` : 'Outside the search zone' });
     },
-    [view, info, live, me.pending, ship, session, say],
+    [view, info, live, me.pending, me.joined, ship, session, say],
   );
 
   const plot = useCallback(
@@ -235,6 +239,7 @@ export function GameScreen({ huntId, sim, course }: { huntId: string; sim: boole
   else if (me.pending === 'embark') [act, actDisabled] = ['Setting off…', true];
   else if (me.pending === 'course') [act, actDisabled] = ['Setting course…', true];
   else if (me.pending === 'probe') [act, actDisabled] = ['Lowering the lead line…', true];
+  else if (!ship && !me.joined && !view.joinable) [act, actDisabled] = ['Not taking new ships', true];
   else if (!ship) [act, actDisabled] = ['Choose where to set off', true];
   else if (flying) [act, actDisabled] = [`In flight · ${Math.max(1, Math.ceil(ship.arriveTs - now))} s`, true];
   else if (now < readyAt) [act, actDisabled] = [`Lead line drying · ${Math.max(1, Math.ceil(readyAt - now))} s`, true];
@@ -334,7 +339,7 @@ export function GameScreen({ huntId, sim, course }: { huntId: string; sim: boole
         onCancel={() => setProposal(null)}
       >
         {ended && !endDismissed && info && view ? (
-          <EndCard info={info} view={view} myShip={myShip} onClose={() => setEndDismissed(true)} />
+          <EndCard info={info} view={view} myShip={myShip} joined={me.joined} session={session} onClose={() => setEndDismissed(true)} />
         ) : null}
       </Stage>
 
@@ -364,8 +369,8 @@ export function GameScreen({ huntId, sim, course }: { huntId: string; sim: boole
           {onChain ? (
             <p className={s.guestActions}>
               {me.shipIndex < 0 ? <WalletButton className={s.botBtn} /> : null}
-              {live ? (
-                <button type="button" className={s.botBtn} onClick={() => bots.start(3)} disabled={bots.state.phase !== 'idle' && bots.state.phase !== 'failed'}>
+              {live || bots.state.phase !== 'idle' ? (
+                <button type="button" className={s.botBtn} onClick={() => bots.start(3)} disabled={!live || (bots.state.phase !== 'idle' && bots.state.phase !== 'failed')}>
                   {botLabel(bots.state)}
                 </button>
               ) : null}
