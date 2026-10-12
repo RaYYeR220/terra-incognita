@@ -79,7 +79,6 @@ export function fundKeys(args: {
       if (!isJoinable(hunt, await client.now())) return refuse(409, 'That hunt can no longer be joined.');
       target = JOIN_FUNDING + Math.min(hunt.entryFee, MAX_FAUCET_ENTRY_FEE);
       const balances = await Promise.all(keys.map((k) => client.base.getBalance(k)));
-      const needed = balances.reduce((sum, b) => sum + Math.max(0, target - b), 0);
       const reserve = await client.base.getBalance(payer.publicKey);
 
       // The caps, all together, immediately before the transfer.
@@ -90,12 +89,13 @@ export function fundKeys(args: {
       if (balances.some((b) => b >= target / 2)) return refuse(409, 'That key already holds enough to play.');
       if (recent.length + keys.length > KEYS_PER_IP) return refuse(429, 'Too many keys funded from here. Try again in a few minutes.');
       if (purpose === 'bots' && (botsByHunt.get(hunt58) ?? 0) + keys.length > BOTS_PER_HUNT) return refuse(429, 'This hunt already has its share of rival bots.');
-      if (reserved.reduce((sum, r) => sum + r.lamports, 0) + needed > HOURLY_BUDGET) {
+      if (reserved.reduce((sum, r) => sum + r.lamports, 0) + target * keys.length > HOURLY_BUDGET) {
         return refuse(429, 'The faucet has given out its hourly share. Try again later, or play a practice hunt.');
       }
-      if (reserve - needed < TREASURY_FLOOR) return refuse(503, 'The faucet is running low. Play a practice hunt for now.');
+      if (reserve - target * keys.length < TREASURY_FLOOR) return refuse(503, 'The faucet is running low. Play a practice hunt for now.');
 
-      charge = { at: now, lamports: needed };
+      // Charge the most a transfer could send, not the top-up estimate, so the budget never lags.
+      charge = { at: now, lamports: target * keys.length };
       reserved.push(charge);
       for (const n of names) fundedKeys.add(n);
       keysByIp.set(ip, [...recent, ...keys.map(() => now)]);
