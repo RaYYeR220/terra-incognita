@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870" role="img" aria-labelledby="title desc">
+  <title id="title">Terra Incognita architecture on devnet</title>
+  <desc id="desc">Clients use the SDK. The hunt, board, treasure and logbooks are created on Solana and delegated to MagicBlock's private ephemeral rollup on a TEE validator. A VRF callback seals the treasure inside the rollup; a scheduled task calls tick; finalize commits the hunt back to Solana and a Magic Action pays the winner from the vault. In Author mode the creator's location reaches the rollup encrypted inside the delegation. Solid arrows run on devnet; dashed arrows are not wired.</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+    .h1 { font-size: 19px; font-weight: 700; }
+    .h2 { font-size: 15px; font-weight: 700; }
+    .h3 { font-size: 14px; font-weight: 600; }
+    .lbl { font-size: 12px; font-weight: 600; }
+    .sub { font-size: 11.5px; fill: #57606a; }
+    .small { font-size: 11px; fill: #57606a; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10.5px; fill: #57606a; }
+    .dim { font-size: 11px; fill: #6e7781; }
+    .inv { fill: #f0f3f6; }
+    .inv-sub { font-size: 11.5px; fill: #c9d1d9; }
+    .warn { font-size: 12.5px; font-weight: 600; fill: #cf222e; }
+    .box { fill: #ffffff; stroke: #8c959f; stroke-width: 1; }
+    .grey { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1; }
+    .private { fill: #24292f; stroke: #24292f; stroke-width: 1; }
+    .vault { fill: #fff4d6; stroke: #d4a72c; stroke-width: 1.2; }
+    .note { fill: #ffffff; stroke: #cf222e; stroke-width: 1.2; }
+    .live { stroke: #1f2328; stroke-width: 1.6; fill: none; }
+    .wired-not { stroke: #6e7781; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+    .dashed-box { fill: #ffffff; stroke: #6e7781; stroke-width: 1.2; stroke-dasharray: 5 4; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#1f2328"/>
+    </marker>
+    <marker id="arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#6e7781"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="870" rx="14" fill="#fbfaf7"/>
+
+  <!-- Header and legend -->
+  <text x="30" y="40" class="h1">Terra Incognita · how a hunt runs on devnet</text>
+  <line x1="820" y1="34" x2="868" y2="34" class="live" marker-end="url(#arrow)"/>
+  <text x="878" y="38" class="sub" style="fill:#1f2328">running on devnet</text>
+  <line x1="1010" y1="34" x2="1058" y2="34" class="wired-not" marker-end="url(#arrow-dim)"/>
+  <text x="1068" y="38" class="sub" style="fill:#1f2328">not wired</text>
+
+  <!-- Clients -->
+  <rect x="120" y="62" width="260" height="60" rx="8" class="box"/>
+  <text x="250" y="87" class="h3" text-anchor="middle">Web app</text>
+  <text x="250" y="107" class="sub" text-anchor="middle">Next.js · play as a guest · proof page</text>
+
+  <rect x="470" y="62" width="260" height="60" rx="8" class="box"/>
+  <text x="600" y="87" class="h3" text-anchor="middle">Hunter bots</text>
+  <text x="600" y="107" class="sub" text-anchor="middle">belief solver · four personalities</text>
+
+  <rect x="820" y="62" width="260" height="60" rx="8" class="box"/>
+  <text x="950" y="87" class="h3" text-anchor="middle">Scripts</text>
+  <text x="950" y="107" class="sub" text-anchor="middle">verify-hunt · demo-hunt</text>
+
+  <line x1="250" y1="122" x2="250" y2="153" class="live" marker-end="url(#arrow)"/>
+  <line x1="600" y1="122" x2="600" y2="153" class="live" marker-end="url(#arrow)"/>
+  <line x1="950" y1="122" x2="950" y2="153" class="live" marker-end="url(#arrow)"/>
+
+  <!-- SDK -->
+  <rect x="120" y="155" width="960" height="56" rx="8" class="grey"/>
+  <text x="600" y="178" class="h3" text-anchor="middle">@terra-incognita/sdk  +  @terra-incognita/core</text>
+  <text x="600" y="198" class="sub" text-anchor="middle">PDAs · instruction builders · rollup sessions and auth · live subscription · proof report · integer geometry shared with the program</text>
+
+  <!-- SDK to the two layers -->
+  <line x1="240" y1="211" x2="240" y2="288" class="live" marker-end="url(#arrow)"/>
+  <text x="254" y="238" class="lbl">create_hunt · delegate_hunt · join</text>
+  <text x="254" y="254" class="sub">signed by a wallet on Solana</text>
+
+  <line x1="960" y1="211" x2="960" y2="288" class="live" marker-end="url(#arrow)"/>
+  <text x="946" y="232" class="lbl" text-anchor="end">open_hunt · arm · embark · set_course · probe · tick</text>
+  <text x="946" y="248" class="sub" text-anchor="end">session key signs, holds no SOL</text>
+  <text x="946" y="264" class="sub" text-anchor="end">private reads with a rollup auth token</text>
+
+  <!-- Solana panel -->
+  <rect x="30" y="290" width="420" height="560" rx="12" fill="#eaf2fb" stroke="#8fb2d9" stroke-width="1.2"/>
+  <text x="50" y="316" class="h2">Solana devnet</text>
+  <text x="50" y="334" class="sub">base layer</text>
+
+  <rect x="55" y="352" width="370" height="46" rx="6" class="box"/>
+  <text x="71" y="372" class="h3">Hunt</text>
+  <text x="71" y="389" class="sub">config · commitment · reveal · winner</text>
+
+  <rect x="55" y="404" width="370" height="46" rx="6" class="box"/>
+  <text x="71" y="424" class="h3">Board</text>
+  <text x="71" y="441" class="sub">airships · ring of the last 128 pins</text>
+
+  <rect x="55" y="456" width="370" height="46" rx="6" class="box"/>
+  <text x="71" y="476" class="h3">Treasure</text>
+  <text x="71" y="493" class="sub">Solana keeps only its unsealed creation state</text>
+
+  <rect x="55" y="508" width="370" height="46" rx="6" class="box"/>
+  <text x="71" y="528" class="h3">Logbook × player</text>
+  <text x="71" y="545" class="sub">created by join, then delegated</text>
+
+  <text x="55" y="574" class="small">These four are delegated to the rollup while the hunt runs.</text>
+
+  <rect x="55" y="588" width="370" height="46" rx="6" class="vault"/>
+  <text x="71" y="608" class="h3">Vault · never delegated</text>
+  <text x="71" y="625" class="sub">prize seed + entry fees, held on Solana</text>
+
+  <line x1="240" y1="634" x2="240" y2="658" class="live" marker-end="url(#arrow)"/>
+  <text x="252" y="650" class="sub" style="fill:#1f2328">settle</text>
+
+  <rect x="55" y="660" width="370" height="46" rx="6" class="box"/>
+  <text x="71" y="680" class="h3">Winner and creator wallets</text>
+  <text x="71" y="697" class="small">prize to the winner · creator cut ≤ 20 % of entry fees</text>
+
+  <rect x="55" y="722" width="370" height="46" rx="6" class="grey"/>
+  <text x="71" y="742" class="h3">Program terra_incognita</text>
+  <text x="71" y="759" class="mono">37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v</text>
+
+  <rect x="55" y="776" width="370" height="46" rx="6" class="grey"/>
+  <text x="71" y="796" class="h3">MagicBlock delegation program</text>
+  <text x="71" y="813" class="mono">DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh</text>
+
+  <!-- Rollup panel -->
+  <rect x="750" y="290" width="420" height="560" rx="12" fill="#f1ecfa" stroke="#a995d6" stroke-width="1.2"/>
+  <text x="770" y="316" class="h2">MagicBlock Private Ephemeral Rollup</text>
+  <text x="770" y="334" class="sub">TEE validator MTEWGuqx…n3xzo · devnet-tee.magicblock.app</text>
+
+  <rect x="775" y="352" width="370" height="46" rx="6" class="box"/>
+  <text x="791" y="372" class="h3">Hunt · public</text>
+  <text x="791" y="389" class="sub">status · zone cap · commitment · winner</text>
+
+  <rect x="775" y="404" width="370" height="46" rx="6" class="box"/>
+  <text x="791" y="424" class="h3">Board · public</text>
+  <text x="791" y="441" class="sub">airships and pins, never bands</text>
+
+  <rect x="775" y="466" width="370" height="42" rx="6" class="grey"/>
+  <text x="791" y="484" class="h3">VRF oracle</text>
+  <text x="791" y="500" class="sub">randomness requested by open_hunt</text>
+
+  <line x1="960" y1="508" x2="960" y2="526" class="live" marker-end="url(#arrow)"/>
+  <text x="972" y="522" class="small" style="fill:#1f2328">seal_from_vrf (callback)</text>
+
+  <rect x="775" y="528" width="370" height="62" rx="6" class="private"/>
+  <text x="791" y="548" class="h3 inv">Treasure · private, no members</text>
+  <text x="791" y="566" class="inv-sub">location · salt · zone seed · VRF output</text>
+  <text x="791" y="581" class="inv-sub">closest sounding · pending strike</text>
+
+  <line x1="870" y1="628" x2="870" y2="594" class="live" marker-end="url(#arrow)"/>
+  <text x="880" y="616" class="small" style="fill:#1f2328">tick</text>
+  <line x1="1060" y1="628" x2="1060" y2="594" class="wired-not" marker-end="url(#arrow-dim)"/>
+
+  <rect x="775" y="628" width="190" height="50" rx="6" class="box"/>
+  <text x="791" y="649" class="h3">Scheduled task</text>
+  <text x="791" y="667" class="sub">ScheduleTask · tick</text>
+
+  <rect x="975" y="628" width="170" height="50" rx="6" class="dashed-box"/>
+  <text x="991" y="649" class="h3">Hydra crank</text>
+  <text x="991" y="667" class="small">validator never ran it</text>
+
+  <rect x="775" y="694" width="370" height="46" rx="6" class="private"/>
+  <text x="791" y="714" class="h3 inv">Logbook · private: owner + session key</text>
+  <text x="791" y="731" class="inv-sub">the band of each of the owner's soundings</text>
+
+  <rect x="775" y="754" width="370" height="68" rx="6" class="note"/>
+  <text x="791" y="774" class="warn">Refused reads, observed on devnet</text>
+  <text x="791" y="792" class="small" style="fill:#1f2328">getAccountInfo(Treasure) with no token, with an</text>
+  <text x="791" y="808" class="small" style="fill:#1f2328">outsider's token or with the creator's token: null</text>
+
+  <!-- Between the layers -->
+  <line x1="427" y1="368" x2="773" y2="368" class="live" marker-end="url(#arrow)"/>
+  <text x="600" y="341" class="lbl" text-anchor="middle">delegate_hunt · join</text>
+  <text x="600" y="356" class="sub" text-anchor="middle">accounts move into the rollup</text>
+
+  <line x1="773" y1="386" x2="427" y2="386" class="live" marker-end="url(#arrow)"/>
+  <text x="600" y="405" class="lbl" text-anchor="middle">arm: commit Hunt to Solana</text>
+  <text x="600" y="420" class="sub" text-anchor="middle">commitment anchored before play</text>
+
+  <text x="600" y="548" class="lbl" text-anchor="middle">finalize: one Solana transaction</text>
+  <text x="600" y="563" class="sub" text-anchor="middle">commit + undelegate Hunt + Magic Action</text>
+  <text x="600" y="578" class="sub" text-anchor="middle">settle, fee paid by the validator</text>
+  <line x1="750" y1="602" x2="427" y2="602" class="live" marker-end="url(#arrow)"/>
+
+  <line x1="427" y1="622" x2="748" y2="622" class="wired-not" marker-end="url(#arrow-dim)"/>
+  <text x="600" y="641" class="dim" text-anchor="middle">settlement callback into the rollup · not wired</text>
+
+  <text x="600" y="770" class="lbl" text-anchor="middle">encrypted post-delegation action</text>
+  <text x="600" y="785" class="sub" text-anchor="middle">Author mode: location sealed to the validator</text>
+  <line x1="427" y1="799" x2="748" y2="799" class="live" marker-end="url(#arrow)"/>
+</svg>
