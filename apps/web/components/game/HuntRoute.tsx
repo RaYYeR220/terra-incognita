@@ -23,9 +23,9 @@ export function HuntRoute({ id, sim, course }: { id: string; sim: boolean; cours
     let alive = true;
     fetch('/api/hunts/ensure', { method: 'POST' })
       .then(async (res) => {
-        const body = (await res.json()) as { hunt?: { id: string }; error?: string };
+        const body = (await res.json()) as { hunt?: { id: string } | null; joinable?: boolean; error?: string };
         if (!alive) return;
-        if (body.hunt) router.replace(`/hunt/${body.hunt.id}${course ? `?course=${encodeURIComponent(course)}` : ''}`);
+        if (body.hunt && body.joinable !== false) router.replace(`/hunt/${body.hunt.id}${course ? `?course=${encodeURIComponent(course)}` : ''}`);
         else setError(body.error ?? 'No live hunt could be found or started.');
       })
       .catch(() => alive && setError('Could not reach the server to find the live hunt.'));

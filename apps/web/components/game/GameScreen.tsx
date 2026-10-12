@@ -401,7 +401,7 @@ function botLabel(state: ReturnType<typeof useBots>['state']): string {
     case 'funding':
       return 'Funding three rival bots…';
     case 'racing':
-      return `${state.names.length} rival bots at sea · ${state.soundings} soundings`;
+      return `${state.names.length} rival bots at sea · ${state.soundings} ${state.soundings === 1 ? 'sounding' : 'soundings'}`;
     case 'finished':
       return `Bots done · ${state.sweptSol.toFixed(3)} SOL back to the treasury`;
     case 'failed':
@@ -429,7 +429,7 @@ function describe(snap: SessionSnapshot, centre: LonLat | null, now: number): st
   } else parts.push('Your ship has not set off.');
   const rivals = view.ships.filter((x, i) => x.embarked && i !== me.shipIndex).length;
   const pins = view.pins.filter((p) => p.shipIndex !== me.shipIndex).length;
-  parts.push(`${rivals} rival ships, ${pins} sealed rival soundings.`);
+  parts.push(`${rivals} rival ${rivals === 1 ? 'ship' : 'ships'}, ${pins} sealed rival ${pins === 1 ? 'sounding' : 'soundings'}.`);
   if (view.revealed) parts.push(`The treasure was at ${vecText(view.revealed)}.`);
   return parts.join(' ');
 }

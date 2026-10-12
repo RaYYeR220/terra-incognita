@@ -106,7 +106,7 @@ export function RivalsKey({ pins }: { pins: number }) {
       <ul className={s.key}>
         <li>
           <svg viewBox="-15 -13 30 26" aria-hidden="true"><rect x="-8" y="-6" width="18" height="18" rx="3" fill="rgba(12,47,49,.4)" /><rect x="-10" y="-9" width="18" height="18" rx="3" fill="#F6F1E3" stroke="#9FCFC0" /><path d="M-10 -5 H8" stroke="#9FCFC0" /></svg>
-          <span><b>Sealed.</b> {pins} rival soundings: you see where, never what.</span>
+          <span><b>Sealed.</b> {pins} rival {pins === 1 ? 'sounding' : 'soundings'}: you see where, never what.</span>
         </li>
         <li>
           <svg viewBox="-15 -13 30 26" aria-hidden="true"><g transform="scale(.12)"><path d="M-74 -10 L-122 -44 L-108 -4 Z M-74 10 L-122 44 L-108 4 Z" fill="#5FAF9F" /><path d="M-100 0 C-100 -22 -54 -35 0 -35 C56 -35 100 -20 110 0 C100 20 56 35 0 35 C-54 35 -100 22 -100 0 Z" fill="#F6F1E3" stroke="#9FCFC0" strokeWidth="6" /><rect x="-24" y="38" width="52" height="15" rx="6" fill="#1B4F52" /></g><path d="M-14 10 H14" stroke="#2B2B2B" strokeWidth="1.6" strokeDasharray="1.5 3.5" strokeLinecap="round" /></svg>
