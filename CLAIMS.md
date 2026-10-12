@@ -31,7 +31,7 @@ Every public statement we make about Terra Incognita, tagged with how you can ch
 | 16 | The payout can't be claimed twice. | VERIFIED-LIVE | "second settle (base): `AlreadySettled`" (PROOF §3) |
 | 17 | The program and the TypeScript geometry agree on every shared reference value. | REPRODUCIBLE | `npm run test:program`: 27 Rust tests, including the parity check against 1548 values in `packages/core/vectors/geometry.json` |
 | 18 | Test counts: core 100, sdk 32, hunter 77, program 27; devnet suites lifecycle 12/12, simulation-oracle 6/6, confidentiality 4/4, author-sealed 3/3, vrf-hunt 7/7, negative 7/7, crank 3/3, sealing 3/3. | REPRODUCIBLE | `npm run test:packages`, `npm run test:program`, `npm run test:devnet` (the last needs a funded devnet key) |
-| 19 | Anyone can play as a guest, with no wallet. | VERIFIED-LIVE | `<LIVE_URL>` |
+| 19 | Anyone can play as a guest, with no wallet. | VERIFIED-LIVE | https://terra-incognita-hunt.vercel.app |
 | 20 | The bots find the treasure in about ten soundings: median 10 for the surveyor and 13 for the sprinter; in a four-way race the sprinter wins 40.6 %. | MODELED | `packages/hunter` benchmark, 1,000 simulated hunts per row, seed 1 (`packages/hunter/README.md`) |
 | 21 | Ten soundings is close to what the bands allow. | MODELED | about 16 bits are needed to find a 50 km cap on the globe; a sounding yields at most 3 (`packages/hunter/README.md`) |
 

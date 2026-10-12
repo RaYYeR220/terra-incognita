@@ -6,7 +6,7 @@ Video: `<VIDEO_URL>`
 
 ## 1. Play (2 minutes)
 
-1. Open `<LIVE_URL>`.
+1. Open https://terra-incognita-hunt.vercel.app.
 2. Play as a guest. You don't need a wallet or a browser extension. Your moves are signed by a session key that holds no SOL, so every move is free.
 3. Watch the refused read. While the hunt is live, the app asks the rollup for the hidden treasure and gets `null` back. Our recorded reads with no token, with an outsider's token and with the creator's token all came back `null`, and so did every other way of reading the treasure that we tried ([PROOF.md](PROOF.md), section 5).
 4. Open the proof of a finished hunt. It shows the commitment that was on Solana before play, the revealed location, every sounding re-measured against it, and the payout transaction.

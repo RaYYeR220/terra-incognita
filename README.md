@@ -4,7 +4,7 @@ Terra Incognita is a global treasure hunt on Solana. A verifiable random number,
 
 **A treasure hunt where nobody knows where the treasure is. Not even us.**
 
-- Live app: `<LIVE_URL>`
+- Live app: https://terra-incognita-hunt.vercel.app
 - Video: `<VIDEO_URL>`
 - Review in five minutes: [JUDGES.md](JUDGES.md)
 - Every claim as a devnet link: [PROOF.md](PROOF.md)
@@ -200,7 +200,9 @@ npm run dev -w @terra-incognita/web
 | `TERRA_EVIDENCE_LOG` | devnet suites | unset | file the suites append signatures and observations to |
 | `TERRA_DEVNET` | sdk and hunter devnet tests | unset | `1` enables the encrypted author hunt (sdk) and the three-bot hunt (hunter) |
 | `TERRA_TREASURY` | hunter e2e | `deployer` | name of the funding key file in `TERRA_KEYS_DIR` |
-| `<WEB_APP_ENV>` | web app | | |
+| `NEXT_PUBLIC_TERRA_BASE_RPC`, `NEXT_PUBLIC_TERRA_ROLLUP_RPC`, `NEXT_PUBLIC_TERRA_ROUTER_RPC` | web app | the devnet values above | endpoints used in the browser |
+| `TERRA_TREASURY_KEY` | web app, server routes only | unset | base58 or JSON secret key of the devnet treasury that funds guests and creates demo hunts |
+| `NEXT_PUBLIC_SOURCE_URL`, `NEXT_PUBLIC_DOCS_URL` | web app | unset | footer links |
 
 ## Security
 
