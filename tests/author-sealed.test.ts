@@ -11,6 +11,7 @@ import {
   delegatedOnBase,
   evidence,
   evidenceSection,
+  expectFailure,
   isDelegated,
   ownedOnBase,
   payer,
@@ -189,6 +190,34 @@ describe("an author hunt sealed through an encrypted post-delegation action", ()
     expect(treasure.sealed).to.equal(false);
     expect([...treasure.location]).to.deep.equal([0, 0, 0]);
     evidence("- the attacker's treasure is unsealed with no location: the copied ciphertext names the creator's hunt and is refused");
+  });
+
+  it("cannot attach the creator's encrypted seal to the creator's own hunt from another wallet", async () => {
+    const attacker = await wallet("replayer", 0.15);
+    const original = await base.getTransaction(delegation, { maxSupportedTransactionVersion: 0 });
+    const data = Buffer.from(original!.transaction.message.compiledInstructions.at(-1)!.data);
+    const actions = data.subarray(8 + 8 + 4, 8 + 8 + 4 + data.readUInt32LE(16));
+    const before = await base.getAccountInfo(hunt.treasure);
+
+    // Every account meta names the creator's hunt, board and treasure; only the signer is the
+    // attacker, so the hunt address no longer derives from the signing creator.
+    const ix = await hunt.delegateWithActionsIx(actions);
+    ix.keys = ix.keys.map((meta) =>
+      meta.pubkey.equals(payer.publicKey) ? { ...meta, pubkey: attacker.publicKey } : meta,
+    );
+    const failure = await expectFailure(() => sendBase([ix], [attacker], { computeUnits: 800_000 }));
+    const executed = await expectFailure(() =>
+      sendBase([ix], [attacker], { computeUnits: 800_000, skipPreflight: true }),
+    );
+    evidence(`- creator's hunt and ciphertext, attacker as signer: preflight \`${failure.code}\`; executed \`${executed.code}\`, signature \`${executed.signature}\``);
+    expect(failure.code).to.equal("ConstraintSeeds");
+    expect(executed.code).to.equal("ConstraintSeeds");
+
+    const after = await base.getAccountInfo(hunt.treasure);
+    expect(after?.owner.equals(before!.owner)).to.equal(true);
+    expect(Buffer.from(after!.data).equals(Buffer.from(before!.data))).to.equal(true);
+    expect(after?.lamports).to.equal(before?.lamports);
+    evidence("- the creator's treasure on Solana is unchanged (owner, data and lamports), and no action was attached");
   });
 
   it("ends void, reveals the same location on Solana and returns the rent", async () => {
