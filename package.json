@@ -1,0 +1,38 @@
+{
+  "name": "terra-incognita",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:program": "anchor build",
+    "test:program": "cargo test -p terra-incognita --lib",
+    "test:devnet": "ts-mocha -p tests/tsconfig.json -t 1800000 \"tests/**/*.test.ts\"",
+    "build:packages": "npm run build -w @terra-incognita/core && npm run build -w @terra-incognita/sdk && npm run build -w @terra-incognita/hunter",
+    "test:packages": "npm test -w @terra-incognita/core -w @terra-incognita/sdk -w @terra-incognita/hunter",
+    "verify": "tsx scripts/verify-hunt.ts",
+    "demo": "tsx scripts/demo-hunt.ts"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.17.3",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
+    "@solana/web3.js": "^1.98.4",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.0",
+    "chai": "^4.5.0",
+    "mocha": "^11.2.2",
+    "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.0",
+    "tweetnacl": "^1.0.3",
+    "typescript": "^5.8.3"
+  }
+}
