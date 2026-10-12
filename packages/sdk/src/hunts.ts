@@ -43,11 +43,11 @@ export interface CreateHuntOptions {
   creatorBps?: number;
   maxPlayers?: number;
   speedKms?: number;
-  /** Seconds from now until soundings are allowed. */
+  /** Seconds from now until soundings are allowed; at most 7 days. */
   startsInSecs?: number;
-  /** Seconds from the start to the deadline. */
+  /** Seconds from the start to the deadline: at least 135 (the program's 120 plus a margin), at most 30 days. */
   durationSecs: number;
-  /** Seconds between zone stages; 0 keeps the whole globe open. */
+  /** Seconds between zone stages (more than 0). Default 60. */
   zoneIntervalSecs?: number;
   /** Lamports left on the hunt account for rollup fees. */
   opsLamports?: number;
@@ -107,7 +107,7 @@ export async function createHunt(
 
   const sealing: CreatedHunt['sealing'] = mode === HuntMode.Vrf ? 'vrf' : options.sealed === false ? 'direct' : 'encrypted';
   const salt = mode === HuntMode.Author ? (options.salt ?? randomBytes(32)) : undefined;
-  const now = Math.floor(Date.now() / 1000);
+  const now = await client.now();
   const startsAt = now + (options.startsInSecs ?? 0);
   const params: HuntParams = {
     mode,
@@ -124,7 +124,7 @@ export async function createHunt(
     title: options.title ?? 'Terra Incognita',
     clue: options.riddle ?? options.clue ?? '',
   };
-  validateParams(params);
+  validateParams(params, now);
 
   step(
     'create',
@@ -206,13 +206,20 @@ export async function createHunt(
   };
 }
 
-function validateParams(params: HuntParams): void {
+/** Slack on top of the program's minimum play time, for the time the creation takes to land. */
+const PLAY_MARGIN_SECS = 15;
+
+function validateParams(params: HuntParams, now: number): void {
   const bytes = (value: string) => new TextEncoder().encode(value).length;
   const problems: string[] = [];
+  const playFrom = Math.max(params.startsAt, now);
   if (params.creatorBps < 0 || params.creatorBps > LIMITS.maxCreatorBps) problems.push('creatorBps');
   if (params.maxPlayers < 1 || params.maxPlayers > LIMITS.maxPlayers) problems.push('maxPlayers');
   if (params.speedKms <= 0) problems.push('speedKms');
-  if (params.deadline <= params.startsAt) problems.push('durationSecs');
+  if (params.zoneIntervalSecs <= 0) problems.push('zoneIntervalSecs');
+  if (params.startsAt - now > LIMITS.maxStartDelaySecs) problems.push('startsInSecs (at most 7 days)');
+  if (params.deadline - playFrom < LIMITS.minPlaySecs + PLAY_MARGIN_SECS) problems.push(`durationSecs (at least ${LIMITS.minPlaySecs + PLAY_MARGIN_SECS})`);
+  if (params.deadline - playFrom > LIMITS.maxDurationSecs) problems.push('durationSecs (at most 30 days)');
   if (BigInt(params.opsLamports) < BigInt(LIMITS.minOpsLamports)) problems.push('opsLamports');
   if (bytes(params.title) > LIMITS.maxTitleBytes) problems.push('title');
   if (bytes(params.clue) > LIMITS.maxClueBytes) problems.push('clue');
@@ -418,3 +425,74 @@ export async function waitForSettlement(
   return { hunt, settled };
 }
 
+
+/**
+ * Withdraws a hunt that was created but never delegated: reclaims the settlement escrow and
+ * closes the hunt, board, treasure and vault, prize seed included, back to the creator. One
+ * transaction, signed by the creator.
+ */
+export async function cancelHunt(
+  client: TerraClient,
+  creator: TerraSigner | Keypair,
+  huntAddress: PublicKey,
+): Promise<{ signature: string; recovered: number }> {
+  const signer = toSigner(creator);
+  const hunt = await client.fetchHunt(huntAddress);
+  if (!hunt) throw new TerraError('InvalidHunt', `no hunt at ${huntAddress.toBase58()}`);
+  if ((await client.residence(huntAddress)) !== 'solana' || hunt.status !== HuntStatus.Created) {
+    throw new TerraError('WrongStatus', 'only a hunt that was never delegated can be cancelled');
+  }
+  if (!signer.publicKey.equals(hunt.creator)) throw new TerraError('NotCreator', 'only the creator can cancel a hunt');
+  const ix = HuntInstructions.of(hunt, client.programId);
+  const before = await client.base.getBalance(signer.publicKey);
+  const signature = await client.send('solana', [ix.reclaimEscrow(), ix.cancelHunt()], signer);
+  const after = await client.base.getBalance(signer.publicKey);
+  return { signature, recovered: after - before };
+}
+
+export interface RefundResult {
+  /** The rollup transaction that brought the logbook back to Solana, if it was still delegated. */
+  release?: string;
+  refund: string;
+  /** The entry fee returned; the logbook's rent comes back on top. */
+  entryFee: number;
+}
+
+/**
+ * Takes an entry fee back from a void hunt (one that ended without a single sounding): brings
+ * the player's logbook back to Solana, then refunds the fee and closes the logbook, whose rent
+ * goes to the player as well. `payer` pays both transactions and may be anyone; `releaser`
+ * signs the rollup step and defaults to `payer`.
+ */
+export async function claimRefund(
+  client: TerraClient,
+  huntAddress: PublicKey,
+  owner: PublicKey,
+  payer: TerraSigner | Keypair,
+  options: { releaser?: TerraSigner | Keypair } = {},
+): Promise<RefundResult> {
+  const signer = toSigner(payer);
+  const releaser = options.releaser ? toSigner(options.releaser) : signer;
+  const hunt = await client.fetchHunt(huntAddress);
+  if (!hunt) throw new TerraError('InvalidHunt', `no hunt at ${huntAddress.toBase58()}`);
+  if (!hunt.finalized || hunt.status !== HuntStatus.Void) throw new TerraError('NotVoid', 'only a void hunt refunds entry fees');
+  const ix = HuntInstructions.of(hunt, client.programId);
+  const logbook = ix.logbook(owner);
+  const residence = await client.residence(logbook);
+  if (residence === 'missing') throw new TerraError('AlreadyRefunded', 'this entry has been refunded already');
+
+  let release: string | undefined;
+  if (residence === 'rollup') {
+    const send = (by: TerraSigner) =>
+      client.send('rollup', [ix.releaseLogbook(by.publicKey, owner)], by, { computeUnits: COMPUTE_UNITS.release });
+    try {
+      release = await send(releaser);
+    } catch (error) {
+      if (!(error instanceof TerraTxError) || releaser === signer) throw error;
+      release = await send(signer);
+    }
+    await client.waitForRelease([logbook]);
+  }
+  const refund = await client.send('solana', [ix.refundEntry(owner)], signer);
+  return { ...(release ? { release } : {}), refund, entryFee: hunt.entryFee };
+}

@@ -34,6 +34,32 @@ export const PROGRAM_INTERFACE = {
         }
       ]
     },
+    "cancel_hunt": {
+      "discriminator": [1, 235, 200, 4, 199, 21, 221, 229],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true
+        },
+        {
+          "name": "board",
+          "writable": true
+        },
+        {
+          "name": "treasure",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ]
+    },
     "close_board": {
       "discriminator": [117, 4, 35, 166, 80, 233, 153, 42],
       "accounts": [
@@ -47,7 +73,8 @@ export const PROGRAM_INTERFACE = {
         },
         {
           "name": "creator",
-          "writable": true
+          "writable": true,
+          "signer": true
         }
       ]
     },
@@ -63,7 +90,8 @@ export const PROGRAM_INTERFACE = {
         },
         {
           "name": "owner",
-          "writable": true
+          "writable": true,
+          "signer": true
         }
       ]
     },
@@ -79,7 +107,8 @@ export const PROGRAM_INTERFACE = {
         },
         {
           "name": "creator",
-          "writable": true
+          "writable": true,
+          "signer": true
         }
       ]
     },
@@ -532,6 +561,55 @@ export const PROGRAM_INTERFACE = {
         }
       ]
     },
+    "reclaim_escrow": {
+      "discriminator": [176, 139, 187, 224, 9, 247, 207, 234],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "hunt",
+          "writable": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "action_escrow",
+          "writable": true
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ]
+    },
+    "refund_entry": {
+      "discriminator": [214, 5, 136, 23, 253, 7, 230, 81],
+      "accounts": [
+        {
+          "name": "hunt"
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "logbook",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true
+        }
+      ]
+    },
     "release_board": {
       "discriminator": [30, 124, 132, 157, 15, 9, 104, 102],
       "accounts": [
@@ -932,6 +1010,21 @@ export const PROGRAM_INTERFACE = {
       "code": 6025,
       "name": "Overflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6026,
+      "name": "UseRefund",
+      "msg": "Entries of a void hunt are returned with refund_entry"
+    },
+    {
+      "code": 6027,
+      "name": "NotVoid",
+      "msg": "Only entries of a void hunt are refunded"
+    },
+    {
+      "code": 6028,
+      "name": "ForeignSeal",
+      "msg": "The sealed action belongs to another hunt"
     }
   ]
 } as const;

@@ -103,6 +103,130 @@ export type TerraIncognita = {
       "args": []
     },
     {
+      "name": "cancelHunt",
+      "docs": [
+        "Withdraws a hunt that was never delegated: closes the hunt, its board, treasure and",
+        "vault, prize seed included, back to the creator."
+      ],
+      "discriminator": [
+        1,
+        235,
+        200,
+        4,
+        199,
+        21,
+        221,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "hunt"
+          ]
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "board",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasure",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeBoard",
       "docs": [
         "Closes the released board of a finalized hunt and returns its rent, together with",
@@ -170,7 +294,8 @@ export type TerraIncognita = {
         },
         {
           "name": "creator",
-          "writable": true
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -248,7 +373,11 @@ export type TerraIncognita = {
         },
         {
           "name": "owner",
-          "writable": true
+          "docs": [
+            "The player who paid for the logbook decides when its record goes."
+          ],
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -323,7 +452,8 @@ export type TerraIncognita = {
         },
         {
           "name": "creator",
-          "writable": true
+          "writable": true,
+          "signer": true
         }
       ],
       "args": []
@@ -2729,6 +2859,195 @@ export type TerraIncognita = {
       ]
     },
     {
+      "name": "reclaimEscrow",
+      "docs": [
+        "Closes the escrow that pays for the settlement action once it is no longer needed,",
+        "and hands the creator everything the hunt account holds beyond its own rent."
+      ],
+      "discriminator": [
+        176,
+        139,
+        187,
+        224,
+        9,
+        247,
+        207,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "hunt"
+          ]
+        },
+        {
+          "name": "hunt",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "actionEscrow",
+          "writable": true
+        },
+        {
+          "name": "delegationProgram",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refundEntry",
+      "docs": [
+        "Returns an entrant's fee from the vault of a void hunt and closes their released",
+        "logbook, whose rent goes back to them as well. Anyone may send it."
+      ],
+      "discriminator": [
+        214,
+        5,
+        136,
+        23,
+        253,
+        7,
+        230,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "hunt",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt.creator",
+                "account": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "hunt.id",
+                "account": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              }
+            ]
+          }
+        },
+        {
+          "name": "logbook",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  103,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hunt"
+              },
+              {
+                "kind": "account",
+                "path": "logbook.owner",
+                "account": "logbook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "releaseBoard",
       "docs": [
         "Returns the board and the treasure to Solana after the hunt."
@@ -3097,7 +3416,10 @@ export type TerraIncognita = {
       "name": "sealFromAction",
       "docs": [
         "Author mode, run by the validator as the post-delegation action attached by",
-        "`delegate_hunt_sealed`: makes the treasure private and places it in one step."
+        "`delegate_hunt_sealed`: makes the treasure private and places it in one step.",
+        "",
+        "`hunt` travels inside the encrypted arguments, so a copied ciphertext cannot seal a",
+        "different hunt with this hunt's location."
       ],
       "discriminator": [
         29,
@@ -3249,6 +3571,10 @@ export type TerraIncognita = {
         }
       ],
       "args": [
+        {
+          "name": "hunt",
+          "type": "pubkey"
+        },
         {
           "name": "location",
           "type": {
@@ -3931,6 +4257,21 @@ export type TerraIncognita = {
       "code": 6025,
       "name": "overflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6026,
+      "name": "useRefund",
+      "msg": "Entries of a void hunt are returned with refund_entry"
+    },
+    {
+      "code": 6027,
+      "name": "notVoid",
+      "msg": "Only entries of a void hunt are refunded"
+    },
+    {
+      "code": 6028,
+      "name": "foreignSeal",
+      "msg": "The sealed action belongs to another hunt"
     }
   ],
   "types": [

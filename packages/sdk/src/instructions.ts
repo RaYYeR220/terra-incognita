@@ -251,14 +251,49 @@ export class HuntInstructions {
     });
   }
 
+  /**
+   * Void hunts only: returns the entry fee from the vault to `owner` and closes their logbook,
+   * which must be back on Solana. Anyone may send it.
+   */
+  refundEntry(owner: PublicKey): TransactionInstruction {
+    return this.ix('refund_entry', { hunt: this.hunt, vault: this.addresses.vault, logbook: this.logbook(owner), owner });
+  }
+
+  /** Withdraws a hunt that was never delegated; everything goes back to the creator, who signs. */
+  cancelHunt(): TransactionInstruction {
+    return this.ix('cancel_hunt', {
+      creator: this.creator,
+      hunt: this.hunt,
+      board: this.addresses.board,
+      treasure: this.addresses.treasure,
+      vault: this.addresses.vault,
+    });
+  }
+
+  /**
+   * Closes the escrow that pays for the settlement action and hands the creator everything the
+   * hunt account holds beyond its rent. Allowed before delegation and after settlement.
+   */
+  reclaimEscrow(): TransactionInstruction {
+    return this.ix('reclaim_escrow', {
+      creator: this.creator,
+      hunt: this.hunt,
+      vault: this.addresses.vault,
+      actionEscrow: this.addresses.actionEscrow,
+    });
+  }
+
+  /** The owner signs: the record of their soundings goes with it. Not for void hunts (use `refundEntry`). */
   closeLogbook(owner: PublicKey): TransactionInstruction {
     return this.ix('close_logbook', { hunt: this.hunt, logbook: this.logbook(owner), owner });
   }
 
+  /** The creator signs. */
   closeBoard(): TransactionInstruction {
     return this.ix('close_board', { hunt: this.hunt, board: this.addresses.board, creator: this.creator });
   }
 
+  /** The creator signs. */
   closeTreasure(): TransactionInstruction {
     return this.ix('close_treasure', { hunt: this.hunt, treasure: this.addresses.treasure, creator: this.creator });
   }
@@ -289,9 +324,10 @@ export class HuntInstructions {
 
   /**
    * The seal an author hunt carries in its delegation. Only the validator runs it, decrypted,
-   * as a post-delegation action; sent as a transaction it is rejected.
+   * as a post-delegation action; sent as a transaction it is rejected. The hunt key is part of
+   * the sealed arguments, so a seal cannot be replayed into another hunt (`ForeignSeal`).
    */
-  sealFromAction(location: Vec3, salt: Uint8Array): TransactionInstruction {
+  sealFromAction(location: Vec3, salt: Uint8Array, sealedFor: PublicKey = this.hunt): TransactionInstruction {
     return this.ix(
       'seal_from_action',
       {
@@ -301,7 +337,7 @@ export class HuntInstructions {
         treasurePermission: this.addresses.treasurePermission,
         ...this.permissionAccounts,
       },
-      new Writer().vec3(location).fixed(salt, 32).finish(),
+      new Writer().pubkey(sealedFor).vec3(location).fixed(salt, 32).finish(),
     );
   }
 

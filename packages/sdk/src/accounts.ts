@@ -301,9 +301,16 @@ export function decodeTreasure(address: PublicKey, data: Uint8Array): TreasureAc
   };
 }
 
-/** Lamports of `pot` that go to the creator and to the payee when the vault settles. */
-export function payoutSplit(hunt: Pick<HuntAccount, 'status' | 'creatorBps'>, vault: Pick<VaultAccount, 'pot' | 'entryTotal'>) {
-  if (hunt.status === HuntStatus.Void) return { prize: 0, creator: vault.pot };
+/**
+ * Lamports the settlement pays: `prize` to the payee (the winner, or the creator of a void hunt)
+ * and `creator` as the creator's share of the entry fees. A void hunt pays back the prize seed
+ * only; every entrant takes their own fee back with `refund_entry`.
+ */
+export function payoutSplit(
+  hunt: Pick<HuntAccount, 'status' | 'creatorBps'>,
+  vault: Pick<VaultAccount, 'pot' | 'entryTotal'> & { prizeSeed?: number },
+) {
+  if (hunt.status === HuntStatus.Void) return { prize: vault.prizeSeed ?? vault.pot - vault.entryTotal, creator: 0 };
   const creator = Number((BigInt(vault.entryTotal) * BigInt(hunt.creatorBps)) / 10_000n);
   return { prize: vault.pot - creator, creator };
 }

@@ -42,15 +42,19 @@ npx tsx scripts/demo-hunt.ts --treasury ~/.config/solana/id.json
 npx tsx scripts/demo-hunt.ts --treasury <key> --bots surveyor,sprinter,shadow
 ```
 
-Without `--bots` it is idempotent: it reuses a live hunt from the treasury that has seats and at
-least three minutes left, and otherwise creates a VRF hunt (default prize 0.02 SOL, free entry,
-15 minutes, zone stage every 90 s). `--fresh` always creates one.
+Without `--bots` it is idempotent: it reuses a live demo hunt from the treasury that has seats
+and at least three minutes left, and otherwise creates a VRF hunt (default prize 0.02 SOL, free
+entry, 15 minutes, zone stage every 90 s). `--fresh` always creates one. Demo hunts whose
+creation was interrupted before delegation are cancelled on the way, which returns their prize.
+The program requires at least 120 s of play (the SDK asks for 135) and at most 30 days.
 
 With `--bots` it funds one throwaway wallet per personality (`surveyor`, `sprinter`, `shadow`,
 `wanderer`), plays them until the hunt is over, waits for the payout, prints the audit, then
 recovers the rent: logbooks, board and treasure are released to Solana, board and treasure are
-closed, and the bots' balances are swept back to the treasury. Logbooks stay on Solana so the
-hunt can be verified later; `--close-logbooks` closes them too, `--keep-rent` skips the cleanup.
+closed, the settlement escrow and the hunt's leftover operating lamports go back to the
+treasury, and the bots' balances are swept back to it as well. Logbooks stay on Solana so the
+hunt can be verified later; `--close-logbooks` has the bots sign their closing too, and
+`--keep-rent` skips the cleanup. If the hunt ends void, every entry fee is refunded instead.
 
 | option | default | |
 | --- | --- | --- |

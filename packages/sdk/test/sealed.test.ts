@@ -89,8 +89,8 @@ describe('encrypted post-delegation actions', () => {
       action.keys.map((k) => [k.isSigner, k.isWritable]),
     );
     expect(Array.from(sealed.clear)).toEqual(Array.from(action.data.subarray(0, 8)));
-    // 32-byte ephemeral key, 16-byte tag, 12 bytes of location and 32 of salt.
-    expect(sealed.sealed.length).toBe(32 + 16 + 12 + 32);
+    // 32-byte ephemeral key, 16-byte tag, then the hunt key, 12 bytes of location and 32 of salt.
+    expect(sealed.sealed.length).toBe(32 + 16 + 32 + 12 + 32);
   });
 
   it('can only be opened by the validator and hold the location and salt', () => {
@@ -105,7 +105,8 @@ describe('encrypted post-delegation actions', () => {
     expect(Array.from(openSealed(validator.secretKey, theirs) ?? [])).toEqual(expected);
 
     const contains = (needle: Uint8Array) => Buffer.from(actions).indexOf(Buffer.from(needle)) >= 0;
-    expect(contains(action.data.subarray(8, 20))).toBe(false);
+    expect(Array.from(action.data.subarray(8, 40))).toEqual(Array.from(ix.hunt.toBytes()));
+    expect(contains(action.data.subarray(40, 52))).toBe(false);
     expect(contains(salt)).toBe(false);
   });
 

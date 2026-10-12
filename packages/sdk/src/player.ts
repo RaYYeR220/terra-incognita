@@ -7,7 +7,8 @@ import { sleep, waitFor } from './client.js';
 import type { TerraClient } from './client.js';
 import { COMPUTE_UNITS, LIMITS } from './constants.js';
 import { TerraError, isTxError } from './errors.js';
-import { concludeHunt } from './hunts.js';
+import { claimRefund, concludeHunt } from './hunts.js';
+import type { RefundResult } from './hunts.js';
 import { HuntInstructions } from './instructions.js';
 import { keypairSigner, toSigner } from './signer.js';
 import type { LocalSigner, TerraSigner } from './signer.js';
@@ -164,6 +165,14 @@ export class PlayerSession {
       if (now >= ts) return;
       await sleep(Math.min(1_000, (ts - now) * 1_000 + 50));
     }
+  }
+
+  /**
+   * Takes the entry fee back from a hunt that ended void. The operator signs the rollup step;
+   * `payer` (for example the owner's wallet) pays the Solana transaction.
+   */
+  claimRefund(payer: TerraSigner | Keypair): Promise<RefundResult> {
+    return claimRefund(this.client, this.hunt, this.owner, payer, { releaser: this.operator });
   }
 
   /**

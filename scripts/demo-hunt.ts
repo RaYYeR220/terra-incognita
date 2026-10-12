@@ -10,11 +10,13 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
 import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
 import { BAND_NAMES } from '@terra-incognita/core';
 import { PERSONALITIES, runChainBots } from '@terra-incognita/hunter';
-import type { ChainBot, PersonalityName } from '@terra-incognita/hunter';
+import type { BotOutcome, ChainBot, PersonalityName } from '@terra-incognita/hunter';
 import {
   HUNT_STATUS_NAMES,
+  TerraClient,
   buildProofReport,
   cleanupHunt,
   ensureDemoHunt,
@@ -95,25 +97,41 @@ async function main(): Promise<void> {
   await fundAccounts(client, treasury, owners.map((key) => key.publicKey), BOT_FUNDING + hunt.entryFee);
   console.log(`funded ${bots.length} bots with ${sol(BOT_FUNDING + hunt.entryFee)} each`);
 
-  const playStarted = Date.now();
-  const outcomes = await runChainBots(client, hunt.address, bots, {
-    onEvent: (event) => {
-      const at = `${((Date.now() - playStarted) / 1000).toFixed(1).padStart(6)} s`;
-      if (event.kind === 'joined') console.log(`${at}  ${event.bot} joined`);
-      if (event.kind === 'probe') console.log(`${at}  ${event.bot} sounding ${event.index + 1}: ${BAND_NAMES[event.entry.band]}`);
-      if (event.kind === 'done') console.log(`${at}  ${event.bot}: ${event.result.outcome} after ${event.result.probes} soundings`);
-      if (event.kind === 'error') console.log(`${at}  ${event.bot} failed: ${String(event.error)}`);
-    },
-  });
+  // Whatever happens from here on, the bots' balances go back to the treasury.
+  try {
+    const playStarted = Date.now();
+    const outcomes = await runChainBots(client, hunt.address, bots, {
+      onEvent: (event) => {
+        const at = `${((Date.now() - playStarted) / 1000).toFixed(1).padStart(6)} s`;
+        if (event.kind === 'joined') console.log(`${at}  ${event.bot} joined`);
+        if (event.kind === 'probe') console.log(`${at}  ${event.bot} sounding ${event.index + 1}: ${BAND_NAMES[event.entry.band]}`);
+        if (event.kind === 'done') console.log(`${at}  ${event.bot}: ${event.result.outcome} after ${event.result.probes} soundings`);
+        if (event.kind === 'error') console.log(`${at}  ${event.bot} failed: ${String(event.error)}`);
+      },
+    });
+    await finish(client, treasury, hunt.address, outcomes, owners);
+  } finally {
+    const swept = await sweepAccounts(client, owners, treasury.publicKey);
+    console.log(`swept ${sol(swept)} from the bots back to the treasury`);
+  }
+  console.log(`\nverify: npx tsx scripts/verify-hunt.ts ${hunt.address.toBase58()}`);
+}
 
-  const { hunt: finished, settled } = await waitForSettlement(client, hunt.address);
+async function finish(
+  client: TerraClient,
+  treasury: Keypair,
+  huntAddress: PublicKey,
+  outcomes: BotOutcome[],
+  owners: Keypair[],
+): Promise<void> {
+  const { hunt: finished, settled } = await waitForSettlement(client, huntAddress);
   const winner = outcomes.find((outcome) => outcome.owner === finished.winner?.toBase58());
   console.log(
     `hunt ${HUNT_STATUS_NAMES[finished.status]}${winner ? `, won by ${winner.name}` : finished.winner ? `, won by ${short(finished.winner)}` : ''}; ` +
       `payout ${settled ? 'settled' : 'not settled yet'}`,
   );
 
-  const report = await buildProofReport(client, hunt.address);
+  const report = await buildProofReport(client, huntAddress);
   console.log(
     `audit: ${report.verdict}, commitment ${report.commitmentOk ? 'ok' : 'MISMATCH'}, ` +
       `${report.entriesChecked} soundings re-measured, ${report.mismatches} mismatches`,
@@ -121,12 +139,12 @@ async function main(): Promise<void> {
   if (report.settlement) console.log(`payout transaction ${report.settlement.explorer}`);
 
   if (!values['keep-rent'] && settled) {
-    const cleanup = await cleanupHunt(client, treasury, hunt.address, { closeLogbooks: values['close-logbooks'] });
-    console.log(`rent: ${cleanup.released.length} accounts released, ${cleanup.closed.length} closing transactions`);
+    const cleanup = await cleanupHunt(client, treasury, huntAddress, { players: values['close-logbooks'] ? owners : [] });
+    console.log(
+      `rent: ${cleanup.released.length} accounts released, ${cleanup.closed.length} closing transactions` +
+        `${cleanup.refunded.length > 0 ? `, ${cleanup.refunded.length} refund transactions` : ''}`,
+    );
   }
-  const swept = await sweepAccounts(client, owners, treasury.publicKey);
-  console.log(`swept ${sol(swept)} from the bots back to the treasury`);
-  console.log(`\nverify: npx tsx scripts/verify-hunt.ts ${hunt.address.toBase58()}`);
 }
 
 main()

@@ -215,8 +215,11 @@ export async function buildProofReport(
   const read: { owner: string; logbook: LogbookAccount; layer: 'rollup' | 'solana' }[] = [];
   for (const owner of await logbookOwners(client, huntAddress)) {
     const found = await publicLogbook(client, huntAddress, owner);
+    const address = logbookAddress(huntAddress, owner, client.programId);
     if (found) read.push({ owner: owner.toBase58(), ...found });
-    else unreadable.push({ owner: owner.toBase58(), address: logbookAddress(huntAddress, owner, client.programId).toBase58() });
+    // A void hunt has no soundings; its logbooks are closed when the entry fees are refunded.
+    else if (hunt.status === HuntStatus.Void && (await client.residence(address)) === 'missing') continue;
+    else unreadable.push({ owner: owner.toBase58(), address: address.toBase58() });
   }
 
   let commitmentOk = false;

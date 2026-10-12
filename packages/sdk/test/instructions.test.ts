@@ -193,6 +193,28 @@ describe('instructions match the Anchor client', () => {
     );
   });
 
+  it('refund_entry, cancel_hunt and reclaim_escrow', async () => {
+    same(ix.refundEntry(player), await m.refundEntry!().accountsPartial({ hunt, vault, logbook, owner: player }).instruction());
+    same(ix.cancelHunt(), await m.cancelHunt!().accountsPartial({ creator, hunt, board, treasure, vault }).instruction());
+    same(
+      ix.reclaimEscrow(),
+      await m
+        .reclaimEscrow!()
+        .accountsPartial({
+          creator,
+          hunt,
+          vault,
+          actionEscrow: escrowPdaFromEscrowAuthority(hunt),
+          delegationProgram: MB_DELEGATION,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction(),
+    );
+    expect(ix.closeLogbook(player).keys.find((k) => k.pubkey.equals(player))?.isSigner).toBe(true);
+    expect(ix.closeBoard().keys.find((k) => k.pubkey.equals(creator))?.isSigner).toBe(true);
+    expect(ix.closeTreasure().keys.find((k) => k.pubkey.equals(creator))?.isSigner).toBe(true);
+  });
+
   it('settle and the closing instructions', async () => {
     same(
       ix.settle(player),
@@ -212,7 +234,7 @@ describe('instructions match the Anchor client', () => {
     same(
       ix.sealFromAction(location, salt),
       await m
-        .sealFromAction!([...location], Array.from(salt))
+        .sealFromAction!(hunt, [...location], Array.from(salt))
         .accountsPartial({ creator, hunt, treasure, treasurePermission: permissionPdaFromAccount(treasure), ...permission })
         .instruction(),
     );

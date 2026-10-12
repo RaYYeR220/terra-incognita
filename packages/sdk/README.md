@@ -77,16 +77,28 @@ actions with their arguments sealed to the validator (libsodium sealed box to it
 `sealFromAction` are the two instructions that use them.
 
 **Flows** — `createHunt` (`sealed: false` sends `seal_from_author` in the rollup instead of the
-encrypted seal; `riddle` is the same as `clue`), `listHunts({ creator })`, `isJoinable`, `PlayerSession` (`join`,
-`restore`, `serialize`, `embark`, `setCourse`, `fly`, `probe`, `readLogbook`, `ship`,
-`readyAt`), `watchHunt`, `advanceHunt` (one keeper step: tick, finalize or the settle
-fallback), `concludeHunt`, `waitForSettlement`, `scheduleCrank`.
+encrypted seal; `riddle` is the same as `clue`; at least 135 s of play, start at most 7 days
+ahead, at most 30 days of play), `listHunts({ creator })`, `isJoinable`, `PlayerSession`
+(`join`, `restore`, `serialize`, `embark`, `setCourse`, `fly`, `probe`, `readLogbook`, `ship`,
+`readyAt`, `claimRefund`), `watchHunt`, `advanceHunt` (one keeper step: tick, finalize or the
+settle fallback), `concludeHunt`, `waitForSettlement`, `scheduleCrank`.
+
+**Ending without a winner** — `cancelHunt(client, creator, hunt)` withdraws a hunt that was
+never delegated (`reclaim_escrow` and `cancel_hunt` in one transaction; prize and rent go back
+to the creator). A hunt that ends without a single sounding is void: settlement returns only
+the prize seed to the creator, and each entrant takes their fee back with
+`claimRefund(client, hunt, owner, payer)` (or `session.claimRefund(wallet)`), which brings the
+logbook back to Solana and sends `refund_entry`. Players can join only once the hunt is live on
+Solana.
 
 **Proof** — `buildProofReport(client, hunt, { open, tamper })`, `openForAudit`,
 `findSettlement`, `findAnchor`, `logbookOwners`.
 
-**Operations** — `ensureDemoHunt`, `fundAccounts`, `sweepAccounts`, `cleanupHunt` (release and
-close for the rent; logbooks stay readable on Solana unless `closeLogbooks`), `isSettled`.
+**Operations** — `ensureDemoHunt` (also cancels its own interrupted creations), `fundAccounts`,
+`sweepAccounts`, `cleanupHunt` (releases everything, refunds the entrants of a void hunt, and
+when the payer is the creator closes board and treasure and reclaims the settlement escrow and
+the hunt's leftover lamports; logbooks stay readable on Solana unless their owners are passed
+as `players` to sign their closing), `isSettled`.
 
 ## How the rollup is used
 

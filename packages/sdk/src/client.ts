@@ -16,7 +16,7 @@ import type { NetworkConfig } from './constants.js';
 import { TerraError, TerraTxError } from './errors.js';
 import { computeLimit } from './instructions.js';
 import { boardAddress, logbookAddress, treasureAddress, vaultAddress } from './pda.js';
-import { keypairSigner } from './signer.js';
+import { keypairSigner, toSigner } from './signer.js';
 import type { LocalSigner, TerraSigner } from './signer.js';
 
 export type Layer = 'solana' | 'rollup';
@@ -64,6 +64,20 @@ export async function waitFor<T>(
     await sleep(intervalMs);
   }
   throw new TerraError('Timeout', `timed out waiting for ${what}${lastError ? `: ${String(lastError)}` : ''}`);
+}
+
+const TRANSIENT = /fetch failed|ECONNRESET|ETIMEDOUT|socket hang up|EAI_AGAIN|\b50[234]\b/i;
+
+/** Retries a read that failed for reasons of the network rather than of the request. */
+async function retrying<T>(read: () => Promise<T>, attempts = 4): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await read();
+    } catch (error) {
+      if (attempt >= attempts || !TRANSIENT.test(String((error as Error)?.message ?? error))) throw error;
+      await sleep(400 * attempt);
+    }
+  }
 }
 
 /** Where an account currently lives. */
@@ -231,14 +245,14 @@ export class TerraClient {
   async send(
     layer: Layer,
     instructions: TransactionInstruction[],
-    signers: TerraSigner | TerraSigner[],
+    signers: TerraSigner | Keypair | (TerraSigner | Keypair)[],
     options: SendOptions = {},
   ): Promise<string> {
-    const all = Array.isArray(signers) ? signers : [signers];
+    const all = (Array.isArray(signers) ? signers : [signers]).map(toSigner);
     const payer = all[0];
     if (!payer) throw new TerraError('NoSigner', 'a transaction needs a signer');
     const connection = layer === 'solana' ? this.base : await this.rollupSender();
-    const latest = await connection.getLatestBlockhash();
+    const latest = await retrying(() => connection.getLatestBlockhash());
     let tx = new Transaction({ feePayer: payer.publicKey, ...latest });
     if (options.computeUnits) tx.add(computeLimit(options.computeUnits));
     tx.add(...instructions);
@@ -258,7 +272,7 @@ export class TerraClient {
     const status = await waitFor(
       `confirmation of ${signature}`,
       async () => {
-        const value = (await connection.getSignatureStatuses([signature])).value[0];
+        const value = (await retrying(() => connection.getSignatureStatuses([signature]))).value[0];
         if (!value) return null;
         if (value.err) return value;
         if (layer === 'solana' && value.confirmationStatus === 'processed') return null;
@@ -284,7 +298,7 @@ export class TerraClient {
 
   /** Whether `account` sits on Solana under the program, is delegated to the rollup, or is gone. */
   async residence(account: PublicKey): Promise<Residence> {
-    const info = await this.base.getAccountInfo(account);
+    const info = await retrying(() => this.base.getAccountInfo(account));
     if (!info) return 'missing';
     if (info.owner.equals(DELEGATION_PROGRAM_ID)) return 'rollup';
     return 'solana';
@@ -300,8 +314,8 @@ export class TerraClient {
     rollup: Connection = this.rollup,
   ): Promise<{ info: AccountInfo<Buffer>; layer: Layer } | null> {
     const [onBase, onRollup] = await Promise.all([
-      this.base.getAccountInfo(account),
-      rollup.getAccountInfo(account).catch(() => null),
+      retrying(() => this.base.getAccountInfo(account)),
+      retrying(() => rollup.getAccountInfo(account)).catch(() => null),
     ]);
     if (onBase && onBase.owner.equals(this.programId)) return { info: onBase, layer: 'solana' };
     if (onRollup && onRollup.data.length > 0) return { info: onRollup, layer: 'rollup' };
@@ -323,7 +337,7 @@ export class TerraClient {
   /** The vault never leaves Solana. */
   async fetchVault(hunt: PublicKey): Promise<VaultAccount | null> {
     const address = vaultAddress(hunt, this.programId);
-    const info = await this.base.getAccountInfo(address);
+    const info = await retrying(() => this.base.getAccountInfo(address));
     return info ? decodeVault(address, info.data) : null;
   }
 

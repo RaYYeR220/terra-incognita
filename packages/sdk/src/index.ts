@@ -31,6 +31,8 @@ export { TerraClient, sleep, waitFor } from './client.js';
 export type { ClientOptions, Layer, Residence, SendOptions } from './client.js';
 export {
   advanceHunt,
+  cancelHunt,
+  claimRefund,
   concludeHunt,
   createHunt,
   isJoinable,
@@ -45,6 +47,7 @@ export type {
   CreateStep,
   CreatedHunt,
   ListHuntsOptions,
+  RefundResult,
 } from './hunts.js';
 export { PlayerSession } from './player.js';
 export type { PlayerSessionData, ProbeOptions, ProbeResult, ShipView } from './player.js';

@@ -34,6 +34,11 @@ export const LIMITS = {
   maxClueBytes: 200,
   maxCreatorBps: 2_000,
   probeCooldownSecs: 3,
+  /** The deadline must be at least this long after the later of the start and the creation. */
+  minPlaySecs: 120,
+  /** The start may be at most this far in the future. */
+  maxStartDelaySecs: 7 * 86_400,
+  maxDurationSecs: 30 * 86_400,
   vrfRetrySecs: 60,
   minOpsLamports: 5_000_000,
   actionEscrowLamports: 200_000,

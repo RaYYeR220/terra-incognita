@@ -7,7 +7,7 @@ import { sleep } from './client.js';
 import type { TerraClient } from './client.js';
 import { COMPUTE_UNITS } from './constants.js';
 import { TerraError, TerraTxError } from './errors.js';
-import { advanceHunt, createHunt, isJoinable, listHunts } from './hunts.js';
+import { advanceHunt, cancelHunt, createHunt, isJoinable, listHunts } from './hunts.js';
 import type { CreateHuntOptions, CreatedHunt } from './hunts.js';
 import { HuntInstructions } from './instructions.js';
 import { logbookOwners } from './proof.js';
@@ -24,6 +24,11 @@ export interface DemoHuntOptions extends Partial<CreateHuntOptions> {
    * new demo hunts get, so hunts the same key created for other purposes are left alone.
    */
   reuse?: (hunt: HuntAccount) => boolean;
+  /**
+   * Cancel reusable hunts of the treasury that were created more than five minutes ago but never
+   * delegated (an interrupted creation), returning their prize and rent. Default true.
+   */
+  cancelStale?: boolean;
 }
 
 export interface DemoHunt {
@@ -45,13 +50,21 @@ export async function ensureDemoHunt(
   options: DemoHuntOptions = {},
 ): Promise<DemoHunt> {
   const signer = toSigner(treasury);
-  const { minRemainingSecs = 180, fresh = false, reuse, ...create } = options;
-  const clue = create.clue ?? DEMO_CLUE;
+  const { minRemainingSecs = 180, fresh = false, reuse, cancelStale = true, ...create } = options;
+  const clue = create.riddle ?? create.clue ?? DEMO_CLUE;
   const reusable = reuse ?? ((hunt: HuntAccount) => hunt.clue === clue);
+  const now = await client.now();
+  const mine = (await listHunts(client, { creator: signer.publicKey })).filter(reusable);
+  if (cancelStale) {
+    for (const hunt of mine) {
+      // Ids are creation times in milliseconds.
+      const stale = hunt.status === HuntStatus.Created && Number(hunt.id / 1000n) < now - 300;
+      if (stale) await cancelHunt(client, signer, hunt.address).catch(() => undefined);
+    }
+  }
   if (!fresh) {
-    const now = await client.now();
-    for (const hunt of await listHunts(client, { creator: signer.publicKey })) {
-      if (!reusable(hunt) || !isJoinable(hunt, now, minRemainingSecs)) continue;
+    for (const hunt of mine) {
+      if (!isJoinable(hunt, now, minRemainingSecs)) continue;
       const vault = await client.fetchVault(hunt.address);
       if (vault && vault.entrants < hunt.maxPlayers) return { hunt, created: null };
     }
@@ -113,10 +126,13 @@ export async function sweepAccounts(client: TerraClient, keypairs: Keypair[], to
 
 export interface CleanupOptions {
   /**
-   * Also close the logbooks, which returns their rent to the players but removes the record
-   * the audit is built on. Default false: logbooks are released to Solana, where they stay
-   * readable by anyone.
+   * Also close the logbooks of these players, who sign for it: their rent goes back to them but
+   * the record the audit is built on goes too. Logbooks of players not listed are released to
+   * Solana, where they stay readable by anyone. In a void hunt every logbook is closed by the
+   * refund of its entry fee instead, whether listed or not.
    */
+  players?: (TerraSigner | Keypair)[];
+  /** Kept for compatibility: closing a logbook now needs its owner's signature, see `players`. */
   closeLogbooks?: boolean;
   onStep?: (step: string, signature?: string) => void;
 }
@@ -124,14 +140,22 @@ export interface CleanupOptions {
 export interface CleanupResult {
   released: string[];
   closed: string[];
+  /** Entry fees returned in a void hunt, one transaction per batch of entrants. */
+  refunded: string[];
   /** Net change of the creator's and the players' balances while closing. */
   recovered: number;
 }
 
 /**
- * Recovers rent after a hunt has been settled: opens and releases every logbook, releases the
- * board and the treasure, then closes the board and the treasure on Solana (rent to the creator)
- * and, if asked, the logbooks (rent to each player). `payer` signs and pays every step.
+ * Recovers what a settled hunt still holds:
+ *
+ * 1. releases every logbook (opened first) and the board and the treasure back to Solana;
+ * 2. in a void hunt, refunds every entrant's fee, which also closes their logbook;
+ * 3. if `payer` is the creator, closes the board and the treasure and reclaims the settlement
+ *    escrow and the rest of the hunt's operating lamports;
+ * 4. closes the logbooks of the `players` given, signed by them.
+ *
+ * `payer` signs and pays every step. Anyone can do steps 1 and 2.
  */
 export async function cleanupHunt(
   client: TerraClient,
@@ -143,14 +167,14 @@ export async function cleanupHunt(
   const step = options.onStep ?? (() => undefined);
   let hunt = await client.fetchHunt(huntAddress);
   if (!hunt?.finalized) throw new TerraError('NotFinalized', 'the hunt has not been finalized');
-  let vault = await client.fetchVault(huntAddress);
+  const vault = await client.fetchVault(huntAddress);
   if (vault && !vault.settled) {
     const advanced = await advanceHunt(client, huntAddress, signer, { settleGraceSecs: 0 });
     step('settle', advanced.signature);
-    vault = await client.fetchVault(huntAddress);
   }
   hunt = (await client.fetchHunt(huntAddress)) ?? hunt;
   const ix = HuntInstructions.of(hunt, client.programId);
+  const isVoid = hunt.status === HuntStatus.Void;
   const owners = await logbookOwners(client, huntAddress);
   const released: string[] = [];
 
@@ -177,24 +201,45 @@ export async function cleanupHunt(
   await client.waitForRelease(present);
 
   const before = await balances(client, [hunt.creator, ...owners]);
-  const closes = [];
-  if ((await client.residence(ix.addresses.board)) === 'solana') closes.push(ix.closeBoard());
-  if ((await client.residence(ix.addresses.treasure)) === 'solana') closes.push(ix.closeTreasure());
-  if (options.closeLogbooks) {
-    for (const owner of owners) {
-      if ((await client.residence(ix.logbook(owner))) === 'solana') closes.push(ix.closeLogbook(owner));
+  const onSolana = async (address: PublicKey) => (await client.residence(address)) === 'solana';
+
+  const refunded: string[] = [];
+  if (isVoid) {
+    const refunds = [];
+    for (const owner of owners) if (await onSolana(ix.logbook(owner))) refunds.push(ix.refundEntry(owner));
+    for (let i = 0; i < refunds.length; i += 6) {
+      const signature = await client.send('solana', refunds.slice(i, i + 6), signer);
+      refunded.push(signature);
+      step('refund', signature);
     }
   }
+
   const closed: string[] = [];
-  for (let i = 0; i < closes.length; i += 6) {
-    const signature = await client.send('solana', closes.slice(i, i + 6), signer);
-    closed.push(signature);
-    step('close', signature);
+  if (signer.publicKey.equals(hunt.creator)) {
+    const closes = [];
+    if (await onSolana(ix.addresses.board)) closes.push(ix.closeBoard());
+    if (await onSolana(ix.addresses.treasure)) closes.push(ix.closeTreasure());
+    if ((await client.fetchVault(huntAddress))?.settled) closes.push(ix.reclaimEscrow());
+    if (closes.length > 0) {
+      const signature = await client.send('solana', closes, signer);
+      closed.push(signature);
+      step('close', signature);
+    }
   }
+
+  if (!isVoid) {
+    for (const player of options.players ?? []) {
+      const owner = toSigner(player);
+      if (!(await onSolana(ix.logbook(owner.publicKey)))) continue;
+      const signature = await client.send('solana', [ix.closeLogbook(owner.publicKey)], [signer, owner]);
+      closed.push(signature);
+      step(`close logbook ${owner.publicKey.toBase58()}`, signature);
+    }
+  }
+
   await sleep(1_000);
   const after = await balances(client, [hunt.creator, ...owners]);
-  const recovered = after - before;
-  return { released, closed, recovered };
+  return { released, closed, refunded, recovered: after - before };
 }
 
 async function balances(client: TerraClient, keys: PublicKey[]): Promise<number> {

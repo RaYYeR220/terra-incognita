@@ -271,8 +271,9 @@ describe('logbook, vault and treasure', () => {
   });
 
   it('splits the pot the way settle does', () => {
-    const vault = { pot: 70_000_000, entryTotal: 20_000_000 };
+    const vault = { pot: 70_000_000, entryTotal: 20_000_000, prizeSeed: 50_000_000 };
     expect(payoutSplit({ status: HuntStatus.Struck, creatorBps: 1_000 }, vault)).toEqual({ prize: 68_000_000, creator: 2_000_000 });
-    expect(payoutSplit({ status: HuntStatus.Void, creatorBps: 1_000 }, vault)).toEqual({ prize: 0, creator: 70_000_000 });
+    // A void hunt returns the prize seed to the creator (its payee); entry fees are refunded one by one.
+    expect(payoutSplit({ status: HuntStatus.Void, creatorBps: 1_000 }, vault)).toEqual({ prize: 50_000_000, creator: 0 });
   });
 });
