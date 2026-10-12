@@ -22,7 +22,8 @@ Every claim in this repository, with a devnet transaction behind it.
 | 09:01 | [`3GLg2hDL…`](https://explorer.solana.com/tx/3GLg2hDLYdZbdT3ityCkFgAqzFofjwHNsTVdzjsgT1CLYFPjahWyhjgZbNGxy3e4X72bJcZJ4vduYDCxVPBdNFHn?cluster=devnet) | flags passed through volatile loads (first attempt at the compute side channel, section 6) |
 | 09:06 | [`31MJtyFT…`](https://explorer.solana.com/tx/31MJtyFTkRir4cneNVPibF19Nzn2eYns2Z48xYwUeaoJro8fANTFswibtsKzzV9oaWQdnzCkhMEqojY1wbjsK1Fe?cluster=devnet) | `dot` uses wrapping arithmetic: compute no longer depends on position |
 | 09:09 | [`L1nyXgf1…`](https://explorer.solana.com/tx/L1nyXgf1G6L4qMzvbDdejEMKbKrtRoBGoNYf7bSntXMxp42LaRHUkPnfkqPe8pX5dj1VnLK9qAK8zwSntaePHYT?cluster=devnet) | `tick`'s strike-promotion flag passed through a volatile load. Sections 2 to 5 ran on this binary. |
-| 10:35 | [`2zrZLBL3…`](https://explorer.solana.com/tx/2zrZLBL3Ui2yZatbvLwNi64VRnBpeyRoMMAP6SyQw78Z6udkzXnWsiAjKGjpFPTJXsda2Ncx1ne7GuDD4iHHDWiA?cluster=devnet) | **final program.** Adds `delegate_hunt_sealed` and `seal_from_action`, the encrypted author placement in section 8. Nothing else changed and the account layouts are the same, so evidence from the previous binary still applies. |
+| 10:35 | [`2zrZLBL3…`](https://explorer.solana.com/tx/2zrZLBL3Ui2yZatbvLwNi64VRnBpeyRoMMAP6SyQw78Z6udkzXnWsiAjKGjpFPTJXsda2Ncx1ne7GuDD4iHHDWiA?cluster=devnet) | adds `delegate_hunt_sealed` and `seal_from_action`, the encrypted author placement in section 8; nothing else changed |
+| 11:16 | [`3BaZm63v…`](https://explorer.solana.com/tx/3BaZm63vrGyinGvTCYbW8Ht2zFpbJwgqp4xr3a644me8BRafoba9ss5HWZ94ZbF1R3BtUCRrEGbJPhuryHXfvVMf?cluster=devnet) | **current program**, the self-audit fixes (README, Security review; section 9 below). Void hunts settle only the prize seed and entrants reclaim their fees with `refund_entry`. `join` needs a live hunt; `tick` voids a hunt that never went live; `cancel_hunt` and `reclaim_escrow` are new. Logbook creation tolerates a pre-funded address. `delegate_hunt` accepts only `Created` hunts. Closes need the owner's or the creator's signature. `create_hunt` bounds start and deadline. `seal_from_action` carries the hunt key inside the encrypted arguments. |
 
 ## 2. A full hunt: three bots, VRF, struck
 
@@ -170,7 +171,7 @@ Recorded: "VRF output `779748f2b5f5d6f8393aa32c0f80c94606e7a08a2d6257b04ed0551e1
 
 These are the literal results of the reads, as recorded.
 
-**Confidentiality surface on the final program**, author hunt `J2pyqJETSuXzJL6vL1H1bx8G87B5FynyjQc81SGfviPe`, from `tests/confidentiality.test.ts`. The observer key `Cxzp6nMdP33opqbeBsTCJ7Ge7hRter9bAFTpYmLfeyac` is no member of anything. While it watched, alice moved and took a sounding.
+**Confidentiality surface on the 10:35 upgrade**, author hunt `J2pyqJETSuXzJL6vL1H1bx8G87B5FynyjQc81SGfviPe`, from `tests/confidentiality.test.ts`. The observer key `Cxzp6nMdP33opqbeBsTCJ7Ge7hRter9bAFTpYmLfeyac` is no member of anything. While it watched, alice moved and took a sounding.
 
 | handle (observer token / no token, same result) | treasure | alice's logbook (embarked) |
 |---|---|---|
@@ -259,10 +260,15 @@ So the first deployment gave a free yes/no answer to "is X within 50 km?". The n
 - member simulates a probe and asks for its logbook's post-state: err `null`, logs 0, post-state `null`
 - after all simulations: hunt live, 0 probes, 0 pins, logbook entries 0
 
-**On the final program**, author hunt `5k7DfsZqMxvexKmqx5tv1cDjFbJM2n3Y74JgoKfofeaA`: the same six error comparisons were identical, and
+**On the 10:35 upgrade**, author hunt `5k7DfsZqMxvexKmqx5tv1cDjFbJM2n3Y74JgoKfofeaA`: the same six error comparisons were identical, and
 
 - smallest compute budget, same ship, [probe]: 25534 CU at the treasure, 25534 and 25534 CU at two far points
 - smallest compute budget, same ship, [probe, tick]: 47075 CU at the treasure, 47075 and 47075 CU at two far points
+
+**On the current program**, author hunt `6ygGuDtTDajEWCvz53QsELC8GiX6xu12YBJT43yzZD6K`: the same six error comparisons were identical again, and
+
+- smallest compute budget, same ship, [probe]: 25672 CU at the treasure, 25672 and 25672 CU at two far points
+- smallest compute budget, same ship, [probe, tick]: 47351 CU at the treasure, 47351 and 47351 CU at two far points
 
 ## 7. Transactions that fail on purpose
 
@@ -272,7 +278,10 @@ Executed with preflight off, so they landed and failed:
 | --- | --- | --- | --- |
 | `open_hunt` and `arm` in one transaction: arm before the VRF callback, hunt `FCvW6DJetZq1sPvEPg49XeVXBebTZPaKpEcX5Sbsvhq8` | rollup | `5pG4UjE3ou8Siz3qiLcFyfJBXBxzJpFrwqdWUoKHAJSPRGQQrCfWA6eMXK9M6isSbSBVxfPfckYczQbadgPvUjYM` | `{"InstructionError":[2,{"Custom":6003}]}`, `NotSealed` |
 | the same on the first deployment, hunt `5cmENn2TgYbPyZKnaTh9Kb7QT1YPaeKp4Rim59H2uiaa` | rollup | `r5EmZEhP42rEBDWUEHFPXynQxZT1MQvcPnfE6TWZP9j4bSbJXvQWCK7cYbHV1BfvDmA9BU1tDoGDHZzbseDs6UC` | `{"InstructionError":[2,{"Custom":6003}]}` |
-| the 65th sounding of one ship, hunt `Cq53hSNJDerFhMhgbwenPUeZThXP7kPEwAWjptfGvgkq` | rollup | `3QStMpgwgkuQEkTguKt6SHnQjZPXgzS9fR1KiRJWbjX1ZviYMGhwRfUy4n9xRmoqdQWJkMqSp3qykFrzT185LQn8` | `ProbeLimit` (6019); the rollup returns the error with 0 log lines, because the logbook is still private |
+| the 65th sounding of one ship, hunt `Cq53hSNJDerFhMhgbwenPUeZThXP7kPEwAWjptfGvgkq` (10:35 upgrade) | rollup | `3QStMpgwgkuQEkTguKt6SHnQjZPXgzS9fR1KiRJWbjX1ZviYMGhwRfUy4n9xRmoqdQWJkMqSp3qykFrzT185LQn8` | `ProbeLimit` (6019); the rollup returns the error with 0 log lines, because the logbook is still private |
+| the 65th sounding on the current program | rollup | `457DqBkruRKjaKciNi77N6e6GmyQYR8vjcVPcid5ESemD1UAQuTrnWBFJ4bVZbBdiPE1kPqAvc3NuADaSzeXHu35` | `{"InstructionError":[0,{"Custom":6019}]}`, `ProbeLimit` |
+| a replayed author seal, run by the validator inside an attacker's hunt (section 9) | rollup | `5edGWT1umjDMRgoaZ7qxzMmJkqNfQEJJLNdyy5Zp9Jaz6o7Xm3wuMb58FwfEKJkDZayn6Nhh87Eba1n7TCipUUta` | `{"InstructionError":[1,{"Custom":6028}]}`, `ForeignSeal` |
+| arming that attacker's hunt afterwards | rollup | `2Ft1wg8H8Em4gqUiNLDpGH1tKJyj5KHfw6UK7CsWuUG7fCBGepYwGLbrw9hY6ebL84Kn86CQddsEh5ia7epkrhZk` | `{"InstructionError":[1,{"Custom":6002}]}`, `WrongStatus` |
 
 Failures that weren't planned, but which the design expects:
 
@@ -306,7 +315,7 @@ Refused at preflight, with no signature, from the refusal suite on hunt `Cq53hSN
 
 ## 8. Encrypted author placement
 
-In Author mode, the SDK puts the creator's location and salt inside the delegation as a post-delegation action. The action is sealed to the TEE validator's key (a libsodium sealed box to the X25519 form of the validator identity). The validator decrypts it and runs `seal_from_action` inside the rollup. Hunt `7tGEKMaC5FZJ4WaU91xnhjuBp98AcABto7qggUiupn5K`, on the final program:
+In Author mode, the SDK puts the creator's location and salt inside the delegation as a post-delegation action. The action is sealed to the TEE validator's key (a libsodium sealed box to the X25519 form of the validator identity). The validator decrypts it and runs `seal_from_action` inside the rollup. Hunt `7tGEKMaC5FZJ4WaU91xnhjuBp98AcABto7qggUiupn5K`, on the 10:35 upgrade:
 
 - create_hunt (Solana): [`4t2sLQ7U…`](https://explorer.solana.com/tx/4t2sLQ7UFgHqsjMeo29gYE7tMhBhLzNjjpQRjp5R8TWzvkgt2qBtLHa77cLKjRi2gPMRMrgkKLfkQ3kVeRKDdVqJ?cluster=devnet)
 - delegate_hunt_sealed (Solana), 424 bytes of instruction data: [`ZSF9ix4W…`](https://explorer.solana.com/tx/ZSF9ix4WHB7dNMCJKTuj52CTNgwDNiADPaHLtKuDiRUTry1uL3uLr2495frN8BBbFuJzh7Kb2exA88oWj33NYqj?cluster=devnet)
@@ -321,3 +330,76 @@ In Author mode, the SDK puts the creator's location and salt inside the delegati
 - board and treasure closed (Solana): [`FDCP9Mxz…`](https://explorer.solana.com/tx/FDCP9Mxzhn3ejqchT857rbCrMFQnzk1e2JQSEktwCHw4riyVEL8E54cyFcDmhcJ1TiPRZerCzrkwbqUWBfDyJLM?cluster=devnet)
 
 The first attempt, hunt `5y3Yzi5ogEtSYD3bmp1Zve8v3S3hiioncrqAu4vKCgjx`, failed with `InstructionFallbackNotFound`: the validator dispatched the action about 28 s after the upgrade landed, most likely while it was still running the previous program. The validator returned the treasure to Solana unchanged in [`5sghUCs8…`](https://explorer.solana.com/tx/5sghUCs8XQZjVVubzamQWBBdwc6skUjwGmdeVnfRoZabkrxkdCd6vJBH9idHfrYNcvHyMXgVJ1BAGi6ibpCFPvov?cluster=devnet). Its logs showed that the validator had decrypted the arguments and dispatched to our program.
+
+**On the current program**, the encrypted arguments also carry the hunt's address (section 9 shows why). Hunt `FYnpcZsojZYHLYUwQnHF6pH6xesGpXiBTCtSUAimRNRL`:
+
+- create_hunt (Solana): [`66ysAM19…`](https://explorer.solana.com/tx/66ysAM19sBzw2zLnkMcwkbmTdLR9pfkfKzJCGigLEa5T2546Z93M9NiwGBxDPx4cAZ81uwYH8cvEc6kYgTsbuaq8?cluster=devnet)
+- delegate_hunt_sealed (Solana), 456 bytes of instruction data: [`2LYBrA52…`](https://explorer.solana.com/tx/2LYBrA52WqGvuiw2pzZywEV2PE3sm8GLj6BoxPjLGSJgvJ7Bj9fjh55o182BRhTycdBRyZxTB28jVW8Ury79M6Lh?cluster=devnet)
+- "location in the Solana transaction: false; in the delegation record (532 bytes): false"
+- "salt in the Solana transaction: false; in the delegation record (532 bytes): false"
+- arm, accepted once the action had run (rollup): `2sXjGJx8Ncf7JYCEqaXysmT2eNkU6wuxw4s5P7vr3i496TgrRWSnX5b1qJYZaV9RDanEmhbFfridvk5iQM6sQx9g`
+- "the commitment on Solana matches the creator's location and salt, so the validator decrypted and ran the action"
+- "the sealed treasure reads as null without a token, with the creator's and with an outsider's"
+
+## 9. Self-audit fixes on the current program
+
+These transactions come from `tests/recovery.test.ts` and `tests/author-sealed.test.ts`, run against the 11:16 upgrade. The findings and fixes are in the README under [Security review](README.md#security-review).
+
+### A void hunt with entrants: prize seed to the creator, fees back to the players
+
+Hunt `weTrJz5fet8Y6QCUUUurfX2s6anDXFJp9JfpzKkcPKU`: entry fee 0.01 SOL, prize seed 0.02 SOL, two players, nobody sounded.
+
+| Step | Transaction | What it shows |
+| --- | --- | --- |
+| create_hunt | [`522tCzRV…`](https://explorer.solana.com/tx/522tCzRVZTqBuC3FpwcktKpFbW5o659hT9XdZcbq4H1PPzMdk936jXKcGvyTHbqBKLA2Cz2kPNFhVpStVTH6HDcT?cluster=devnet) | |
+| an outsider sends 0.001 SOL to the first player's future logbook address | [`NdZpk1Pf…`](https://explorer.solana.com/tx/NdZpk1PfgkEQZV5QiwGTHd8ZTz8avyHmfxHtookiGchBFwPtzMWo9NKUW5ozb9ZbkFLBqed3JqdB3VRMzBUeRfN?cluster=devnet) | transfer of 1000000 lamports to `9mW8P16R88jLubEaKx919K6C4itp4W2LNiE4dnhDiHQS` |
+| the first player still joins | [`fGuufFSS…`](https://explorer.solana.com/tx/fGuufFSSUZ37ZhtvKvsqgR2PSjK8cHng3NN9he5zDixNy5PtGh87dQoBJsWrbKgeEoJXQb6jJ1SZ1E5qvH27Bnj?cluster=devnet) | creates the logbook at that pre-funded address (finding 4) |
+| second player joins | [`29YPiFUA…`](https://explorer.solana.com/tx/29YPiFUAgqWEJvdwzunpSAgNH8mkc4BVGQY65gwx9yc1okLDobfG3h5HhJugkaghoUgrUWw3uAMFxSahFQQnsN2U?cluster=devnet) | |
+| void payout via Magic Action | [`5dNX6Ve9…`](https://explorer.solana.com/tx/5dNX6Ve97DgPZzncNnjWPqZXPmKgv7eQZq62F2LyyGuAKYTsqKgTRuDFEo7PaVHmSciiWwGmhvbPUzYkWZg1aFY4?cluster=devnet) | "settled: prize 20000000 creator 0": the prize seed back to the creator, nothing more (finding 1) |
+| refund_entry, first player, sent by an outsider | [`2UawnazL…`](https://explorer.solana.com/tx/2UawnazLgkziWgsdmKs32GLH7XZb1QSeWw5bpSYpF4gUt81bdwawsnM3PrSd9tHWLvzTAfEpebYcwQemRm7g6nHb?cluster=devnet) | "+18047848 lamports (fee 10000000 plus logbook rent)" |
+| refund_entry, second player, sent by an outsider | [`32VQm76S…`](https://explorer.solana.com/tx/32VQm76SG4eS6B6dqSAZ1BZoCaoHYBn5aGzTxUsRiAtKibegY1ggYcT77tRZmq2t57L2KtpQSQo4qUrPiczAQhsA?cluster=devnet) | "+18047848 lamports (fee 10000000 plus logbook rent)" |
+| creator closes board and treasure and reclaims the escrow | [`4PxrYCGs…`](https://explorer.solana.com/tx/4PxrYCGsHt9r2EMD4CwXhEgpHCQqXBB7q2Zh1kNvfB4KwbuiEAtzAVV5vNEk9VARgUNZ7z19G8pSep1WZPVHg9uG?cluster=devnet) | `CloseBoard`, `CloseTreasure`, `ReclaimEscrow` (finding 7) |
+
+Refused along the way, at preflight:
+
+- "close_logbook on a void hunt: `UseRefund`"
+- "refund the same entry twice: `AccountNotInitialized`"
+- "delegate a finalized hunt again: `WrongStatus`" (finding 6)
+- "close the board as someone other than the creator: `ConstraintAddress`" (finding 5)
+
+### A hunt that never went live: voided by `tick`, prize seed returned
+
+Hunt `J73M1HHt6o4FEFwiB56BU3XBBAGpW4sPNJsxmR3h4Pos` was delegated and opened, but nobody sealed it.
+
+- create_hunt: [`3BX15Sex…`](https://explorer.solana.com/tx/3BX15Sex35KXTimofPEqRR53KP6LU2Z5W1A6WRLv8wbn7QzhPAK9jm3SSm24QJmPEPhxMgg5Hw1SEyM3m1gj5ke1?cluster=devnet)
+- delegate_hunt: [`2aX7teaV…`](https://explorer.solana.com/tx/2aX7teaVasfPhn2ELvXVk9dv3MCNFKQxhaoR8nc32ZkWnQZPJkpD6CT6XsUKfWyGfJEiLPZGuhrrGNrJenubYqY9?cluster=devnet)
+- "join a delegated hunt that is not armed: `NotLive`" (finding 2)
+- "never-armed hunt: tick -> void, tick -> finalize; the vault paid 20000000 lamports (the prize seed) to the creator through the action": [`4uDSzVLJ…`](https://explorer.solana.com/tx/4uDSzVLJPrvRiX7hWpu6KJaVTNUd8CgCitdwkdC2wHQeejxUe52XoSiBsVUNKgP2pYLiTRbzkfPnXFLjTPymaBrS?cluster=devnet), fee payer = TEE validator, `ProcessUndelegation` then `Settle`
+
+### A hunt that was never delegated: cancelled
+
+Hunt `5Jf5jbJA8Mqo9x7ghn8jQxuMH5c8dQgYju4FDSqGo6wr`:
+
+- create_hunt: [`64oZJVcA…`](https://explorer.solana.com/tx/64oZJVcAoidXott9W2KUQNudfRVZWisskg751NsotsiL54fp4cHxLHRTqEDuQ7gmxX6hcpkBSJEVAsfizG2cjkFs?cluster=devnet)
+- "join a hunt that was never delegated: `NotLive`"
+- reclaim_escrow + cancel_hunt: [`38SwYoui…`](https://explorer.solana.com/tx/38SwYouiyYaRpT9iMcXGuWziHNfm848mvh3CHs8c11iRRJvSraGnCNkyMq8o6ZkhtfzbKUDfPbAA4bs123DG1Cgr?cluster=devnet). "creator got 92149288 lamports back (prize seed 20000000 included)". The hunt account no longer exists.
+
+### Bounds
+
+- "create_hunt ending 60 s after its start: `InvalidParams`"
+- "create_hunt starting in 8 days: `InvalidParams`"
+
+### A replayed author seal is refused
+
+An attacker copied the creator's encrypted seal arguments into a sealed delegation of the attacker's own hunt.
+
+| Step | Layer | Transaction | What it shows |
+| --- | --- | --- | --- |
+| creator's hunt `HrJiDoYt82Z8UU33ujRMiW6jNMCcwmqzenEBhJe6BiNi`: create, sealed delegation | Solana | [`2bDMhDb8…`](https://explorer.solana.com/tx/2bDMhDb8pcGL3QBdyQXqsfX3wCwXoF23jfthQU29LqfKZoJwW8HgTAwUnsRSYkaxyXexxxJQZTLMQVe6czePqRT3?cluster=devnet), [`2UHDBEyB…`](https://explorer.solana.com/tx/2UHDBEyBQhFBYkstmFK8ksAZb5sD6R3ZTdqHdtvqqwWYnSXaQ19yPuehXB8DCR8ADXCFkGF76sTVSbnBhMBVCfuq?cluster=devnet) | |
+| attacker's hunt `8CnCN9QLjUBg8AKCtKUMTTEW2u9noyXJC4EXTakW2RBM` created | Solana | [`8jkoaFSg…`](https://explorer.solana.com/tx/8jkoaFSgNc9FtNmr4NSTQEMZSd1gBTvRJnoUHLs1jbvwQShXPkR3cDUkHM5auQAaWMSAdYYBusML6BLkPQHLsH6?cluster=devnet) | |
+| "the creator's 128-byte encrypted arguments spliced into the attacker's own sealed delegation" | Solana | [`2ncJfyqd…`](https://explorer.solana.com/tx/2ncJfyqdXPmNjWyZbxHUmyB2mG2kNts8SoyzHJCfhpSDALhUKvjHUwYoEQ8TxEr7LykKMVXoPEYeZVEvfUYxvgpC?cluster=devnet) | `DelegateHuntSealed` succeeds: the delegation program can't see inside the ciphertext |
+| the validator runs the copied action | rollup | `5edGWT1umjDMRgoaZ7qxzMmJkqNfQEJJLNdyy5Zp9Jaz6o7Xm3wuMb58FwfEKJkDZayn6Nhh87Eba1n7TCipUUta` | via `PostAct1111…`; our program logs "Error Code: ForeignSeal. Error Number: 6028. Error Message: The sealed action belongs to another hunt." |
+| the attacker's treasure returns to Solana unsealed | Solana | [`3bNHgQAr…`](https://explorer.solana.com/tx/3bNHgQArdaB1GzD4TxQnEVp6XUfWk7FCruqvrkfkZmczU75ygL9cbaP27w3hG9aVHjpnfPABWc1j9GNCARTgGv1K?cluster=devnet) | fee payer = TEE validator, `ProcessUndelegation` |
+| the attacker tries to arm | rollup | `2Ft1wg8H8Em4gqUiNLDpGH1tKJyj5KHfw6UK7CsWuUG7fCBGepYwGLbrw9hY6ebL84Kn86CQddsEh5ia7epkrhZk` | `WrongStatus` (6002) |
+
+Recorded by the suite: "after the copied action: arm refused: WrongStatus; treasure back on Solana: true; sealed there: false" and "the attacker's treasure is unsealed with no location: the copied ciphertext names the creator's hunt and is refused".

@@ -29,7 +29,7 @@ A treasure hunt on a public chain has a basic problem: whoever stores the answer
 1. **Sealed.** The creator calls `create_hunt` on Solana, which moves the prize into a vault, and then delegates the hunt, its board and its treasure to the TEE validator. `open_hunt` makes the treasure private with no members and requests VRF randomness. The callback stores it. `arm` derives the location, a salt and a zone seed from the randomness, publishes `sha256("terra-incognita:v1" ‖ hunt ‖ location ‖ salt)`, and commits the hunt to Solana. The SDK's `createHunt` returns only once that commitment is visible on Solana. In the three-bot hunt it landed before any player joined.
 2. **Set a course.** A player calls `join` on Solana, which pays the entry fee and registers a session key. This is the only time the wallet signs. The player then calls `embark` at a starting point and `set_course` to fly. Flight time is the straight-line chord between the two points at the hunt's speed (800 km/s by default). A ship can't change course or take a sounding while it is in the air.
 3. **Take a sounding.** `probe` measures the distance from the ship to the treasure inside the enclave. It writes a band into the player's private logbook and pins the position, without the band, on the public board. Soundings have a 3 s cooldown, which starts at embark, and each ship gets 64. On a schedule, `tick` publishes a shrinking circle that always contains the treasure, with radii of 90°, 60°, 40°, 25°, 15°, 9°, 5° and 3°.
-4. **Strike, or closest wins.** A sounding within 50 km is a strike. It is recorded privately and made public by the next `tick` in a later slot. If the deadline passes first, the closest sounding wins (the earlier one on a tie). A hunt with no soundings is void and refunds the creator. `finalize` reveals the location and salt, and the Magic Action pays out on Solana. After that, anyone can open the logbooks and the treasure and re-check every hint.
+4. **Strike, or closest wins.** A sounding within 50 km is a strike. It is recorded privately and made public by the next `tick` in a later slot. If the deadline passes first, the closest sounding wins (the earlier one on a tie). A hunt with no soundings is void, and so is a hunt that never went live by its deadline. A void hunt returns only the prize seed to the creator, and each entrant takes their own fee back with `refund_entry`. `finalize` reveals the location and salt, and the Magic Action pays out on Solana. After that, anyone can open the logbooks and the treasure and re-check every hint.
 
 | Band | Name | Distance from the sounding |
 | --- | --- | --- |
@@ -69,30 +69,34 @@ Solid arrows run on devnet. Dashed arrows are not wired: the settlement callback
 | `Hunt` | `"hunt", creator, id (u64 LE)` | Solana, then delegated from creation until `finalize` | everyone |
 | `Board` | `"board", hunt` | delegated until released after the end | everyone: airships and the last 128 pins, never bands |
 | `Treasure` | `"treasure", hunt` | delegated; private with no members from `open_hunt` (or `seal_from_action`) | nobody until `open_treasure` after the end |
-| `Logbook` | `"logbook", hunt, player` | created and delegated by `join`; private from `embark` | its owner and session key; everyone after `open_logbook` |
+| `Logbook` | `"logbook", hunt, player` | created and delegated by `join`; private from `embark`; closed by `refund_entry` if the hunt is void | its owner and session key; everyone after `open_logbook` |
 | `Vault` | `"vault", hunt` | Solana only, never delegated | everyone |
 
 | Instruction | Layer | Who can send it | What it does |
 | --- | --- | --- | --- |
-| `create_hunt` | Solana | creator | creates hunt, board, treasure and vault; moves the prize and the fee budget |
-| `delegate_hunt` | Solana | creator | delegates hunt, board and treasure to the hunt's validator |
+| `create_hunt` | Solana | creator | creates hunt, board, treasure and vault; moves the prize and the fee budget; at least 120 s of play, a start at most 7 days ahead, at most 30 days long |
+| `cancel_hunt` | Solana | creator | withdraws a hunt that was never delegated: closes all four accounts, prize seed included, back to the creator |
+| `delegate_hunt` | Solana | creator | delegates hunt, board and treasure to the hunt's validator; only while the hunt is `Created` |
 | `delegate_hunt_sealed` | Solana | creator, Author mode | the same, with an encrypted `seal_from_action` attached to the treasure's delegation |
-| `join` | Solana | player | pays the entry fee, creates and delegates the logbook, registers a session key |
+| `join` | Solana | player | only once the hunt is live: pays the entry fee, creates and delegates the logbook, registers a session key |
 | `open_hunt` | rollup | creator | makes the treasure private with no members; in VRF mode, requests randomness |
 | `seal_from_vrf` | rollup | VRF oracle only | callback: stores the randomness in the treasure, nothing else |
-| `seal_from_action` | rollup | the validator, as the post-delegation action; signed by the creator | makes the treasure private and places it in one step |
+| `seal_from_action` | rollup | the validator, as the post-delegation action; signed by the creator | makes the treasure private and places it in one step; refuses arguments sealed for another hunt (`ForeignSeal`) |
 | `seal_from_author` | rollup | creator, Author mode | direct alternative: places the treasure after `open_hunt` (SDK option `sealed: false`) |
 | `arm` | rollup | anyone, once sealed | derives the secrets, publishes the commitment, commits the hunt to Solana |
 | `schedule_tick_legacy` / `schedule_tick` | rollup | anyone, while live | registers `tick` with the validator's task scheduler / with Hydra |
 | `embark` | rollup | owner or session key | makes the logbook private, puts the airship on the board, starts the cooldown |
 | `set_course` | rollup | owner or session key | flies to a new point; not while in flight |
 | `probe` | rollup | owner or session key | takes a sounding: private band, public pin |
-| `tick` | rollup | anyone or the scheduler, no signer needed | promotes a strike from an earlier slot, closes at the deadline, shrinks the zone, finalizes an ended hunt |
+| `tick` | rollup | anyone or the scheduler, no signer needed | promotes a strike from an earlier slot, closes at the deadline, shrinks the zone, finalizes an ended hunt; ends a hunt that never went live as void at its deadline |
 | `finalize` | rollup | anyone, once ended | reveals location and salt; commit + undelegate + `settle` action |
-| `settle` | Solana | the Magic Action, or anyone as a fallback | pays the vault to the winner (minus the creator's cut) or refunds a void hunt; only once |
+| `settle` | Solana | the Magic Action, or anyone as a fallback | pays the vault to the winner (minus the creator's cut); for a void hunt, returns only the prize seed to the creator; only once |
+| `refund_entry` | Solana | anyone, for a void hunt | returns one entrant's fee and closes their logbook, rent included, to them |
+| `reclaim_escrow` | Solana | creator, once settled or never delegated | closes the settlement action's escrow and returns the hunt account's surplus to the creator |
 | `open_treasure` / `open_logbook` | rollup | anyone, after the reveal | makes the account public for the audit |
 | `release_logbook` / `release_board` | rollup | anyone, after the reveal | returns accounts to Solana |
-| `close_logbook` / `close_board` / `close_treasure` | Solana | anyone, once the account is released after `finalize` | returns rent to the player or the creator; `close_board` also returns the hunt account's unused fee budget |
+| `close_logbook` | Solana | the player, once released after `finalize` | returns the logbook's rent to its owner; refused for a void hunt (`UseRefund`) |
+| `close_board` / `close_treasure` | Solana | the creator, once released after `finalize` | returns rent to the creator; `close_board` also returns the hunt account's unused fee budget |
 
 ## Verify a hunt yourself
 
@@ -151,7 +155,7 @@ You need Node 22 or newer (we use 24). To build the program you also need Rust 1
 ```sh
 npm install
 npm run build:packages            # core, sdk, then hunter
-npm run test:packages             # core 100, sdk 32, hunter 77 (+1 devnet test each in sdk and hunter, skipped by default)
+npm run test:packages             # core 100, sdk 33, hunter 77 (+3 devnet tests in sdk and 1 in hunter, skipped by default)
 npm run test:program              # 27 Rust unit tests, including the geometry parity check; no network
 ```
 
@@ -176,7 +180,21 @@ npm run build:program
 npm run test:devnet
 ```
 
-Last results: lifecycle 12/12, simulation-oracle 6/6, confidentiality 4/4 and author-sealed 3/3 on the final program; vrf-hunt 7/7, negative 7/7, crank 3/3 and sealing 3/3 on the previous upgrade, which differs only by the two sealed-path instructions.
+Last results:
+
+| Suite | Result | Program it last ran against |
+| --- | --- | --- |
+| recovery | 8/8 | current (self-audit upgrade, 2026-10-12 11:16 UTC) |
+| lifecycle | 12/12 | current |
+| author-sealed | 4/4 | current |
+| simulation-oracle | 6/6 | current |
+| negative | 7/7 | current |
+| confidentiality | 4/4 | previous upgrade (10:35 UTC), before the self-audit fixes |
+| vrf-hunt | 7/7 | 09:09 UTC upgrade |
+| crank | 3/3 | 09:09 UTC upgrade |
+| sealing | 3/3 | 09:09 UTC upgrade |
+
+The last four suites have not been re-run since the self-audit fixes.
 
 Run the web app:
 
@@ -198,7 +216,7 @@ npm run dev -w @terra-incognita/web
 | `BASE_RPC`, `TEE_RPC`, `ROUTER_RPC`, `TEE_VALIDATOR` | devnet suites | the devnet values above | endpoints for the suites |
 | `TERRA_KEYS_DIR` | devnet suites, hunter e2e | `keys/` (suites), `~/.config/solana` (e2e) | where test wallets are kept |
 | `TERRA_EVIDENCE_LOG` | devnet suites | unset | file the suites append signatures and observations to |
-| `TERRA_DEVNET` | sdk and hunter devnet tests | unset | `1` enables the encrypted author hunt (sdk) and the three-bot hunt (hunter) |
+| `TERRA_DEVNET` | sdk and hunter devnet tests | unset | `1` enables the devnet tests of the sdk (encrypted author hunt, hunts without a winner) and the hunter (three-bot hunt) |
 | `TERRA_TREASURY` | hunter e2e | `deployer` | name of the funding key file in `TERRA_KEYS_DIR` |
 | `NEXT_PUBLIC_TERRA_BASE_RPC`, `NEXT_PUBLIC_TERRA_ROLLUP_RPC`, `NEXT_PUBLIC_TERRA_ROUTER_RPC` | web app | the devnet values above | endpoints used in the browser |
 | `TERRA_TREASURY_KEY` | web app, server routes only | unset | base58 or JSON secret key of the devnet treasury that funds guests and creates demo hunts |
@@ -217,7 +235,7 @@ How the program meets the rule now:
 - **`probe` checks only public state, then stops branching.** Live, started, deadline, embarked, probe limit, in flight and cooldown are all read from the public hunt and board before the secret is touched. After that point, the private treasure and logbook are updated only through branch-free selections (`blind.rs`). Nothing can fail and nothing public is written.
 - **A strike stays private until a later slot.** `probe` records the first strike in the treasure (player, slot, timestamp). Only `tick` copies it to the public hunt, and only when the strike's slot is earlier than the current one. Inside one transaction or one slot, the public state looks the same whether or not there was a strike.
 - **`embark` starts the cooldown,** so `[embark, probe]` fails the same way at any point on the globe.
-- **Compute must not depend on the result either.** A caller can binary-search the compute limit. We measured a 2 CU difference: a probe needed 25435 CU at the treasure and 25433 CU at two far points. We traced it to the overflow checks in the `i64` dot product, which compiled to branches on the operands' signs. `dot` now uses wrapping arithmetic, which is safe because its inputs are unit vectors and cannot overflow, and flags pass through volatile loads so the optimiser can't turn them back into branches. On the final program a probe needs 25534 CU at the treasure and at both far points, and `[probe, tick]` needs 47075 CU in all three places.
+- **Compute must not depend on the result either.** A caller can binary-search the compute limit. We measured a 2 CU difference: a probe needed 25435 CU at the treasure and 25433 CU at two far points. We traced it to the overflow checks in the `i64` dot product, which compiled to branches on the operands' signs. `dot` now uses wrapping arithmetic, which is safe because its inputs are unit vectors and cannot overflow, and flags pass through volatile loads so the optimiser can't turn them back into branches. On the current program a probe needs 25672 CU at the treasure and at both far points, and `[probe, tick]` needs 47351 CU in all three places.
 - **`tests/simulation-oracle.test.ts` checks this on devnet.** It simulates `[embark, probe, probe]`, `[probe, probe]`, `[probe, tick]`, `[probe, tick, finalize]` and `[probe, finalize]` from a ship sitting on the treasure and from one on the far side of the globe, and expects identical errors. It also expects identical minimal compute budgets, `null` post-state even for the logbook's own member, and no change to the hunt afterwards.
 
 The general lesson for anyone building on a private rollup: every instruction's error code, compute use and public writes are public outputs, even when its logs and accounts are not.
@@ -225,16 +243,45 @@ The general lesson for anyone building on a private rollup: every instruction's 
 ### Other safeguards
 
 - `seal_from_vrf` accepts only the VRF oracle's identity. A forged callback is refused with `ConstraintAddress`.
-- `delegate_hunt_sealed` accepts only actions whose single signer is the hunt's creator. `seal_from_action` checks the creator, the mode and the status, and runs only once per treasure.
+- `delegate_hunt_sealed` accepts only actions whose single signer is the hunt's creator. The encrypted arguments carry the hunt's address, and `seal_from_action` refuses any other hunt. It also checks the creator, the mode and the status, and runs only once per treasure.
 - `arm` refuses an unsealed treasure (`NotSealed`), so no commitment can exist before the randomness does. `open_hunt` and `arm` in one transaction fail.
 - Every position a player supplies is re-normalised on-chain. The slack allowed by the unit-vector check therefore can't buy a closer sounding.
 - A session key can only embark, set a course and take soundings for its own logbook. Prizes always go to the owner's wallet.
-- `settle` runs only after the hunt is back on Solana in a final state, and only once (a second attempt returns `AlreadySettled`). The creator's cut is capped at 20 % of entry fees, and the prize seed always goes to the winner, or back to the creator if the hunt is void.
-- The hunt account pays the rollup fees and signs its own commits with its seeds. The escrow for the settlement action is funded at creation.
+- `settle` runs only after the hunt is back on Solana in a final state, and only once (a second attempt returns `AlreadySettled`). The creator's cut is capped at 20 % of entry fees. The prize seed goes to the winner, or back to the creator if the hunt is void. Entry fees of a void hunt never reach the creator: each entrant reclaims their own with `refund_entry`.
+- The hunt account pays the rollup fees and signs its own commits with its seeds. The escrow for the settlement action is funded at creation, and the creator reclaims it with `reclaim_escrow`.
+
+### Security review
+
+We reviewed our own program, concentrating on where money moves and where the encrypted seal travels. All eight findings are fixed in the upgrade of 2026-10-12 at 11:16 UTC ([`3BaZm63v…`](https://explorer.solana.com/tx/3BaZm63vrGyinGvTCYbW8Ht2zFpbJwgqp4xr3a644me8BRafoba9ss5HWZ94ZbF1R3BtUCRrEGbJPhuryHXfvVMf?cluster=devnet)). No outside firm has audited the program.
+
+The severities are our own rating:
+
+- **High:** a player's money or a hunt's secret is at risk.
+- **Medium:** a third party can block a player or erase the record the audit relies on.
+- **Low:** cost or hygiene.
+
+| # | Severity | Finding | Fix |
+| --- | --- | --- | --- |
+| 1 | High | A void hunt paid the entry fees to the creator, so a creator who steered a hunt into void kept the players' fees. | A void hunt settles only the prize seed. Each entrant takes their fee back with `refund_entry`, and `close_logbook` is refused for a void hunt (`UseRefund`). |
+| 2 | High | Funds could be locked in a hunt that never went live. `join` accepted entrants before the hunt was armed, and nothing ended a hunt that never armed. | `join` requires the hunt to be live. `tick` ends a hunt that never went live as void at its deadline. `cancel_hunt` lets the creator withdraw a hunt that was never delegated. |
+| 3 | High | The encrypted author seal could be replayed into another hunt. Copied into a hunt someone else controls, it would seal that hunt with the original hunt's secret location, and ending that hunt would publish it. | The hunt's address travels inside the ciphertext, and `seal_from_action` refuses any other hunt with `ForeignSeal`. |
+| 4 | Medium | Sending lamports to a player's future logbook address blocked that player from joining. | The logbook is created in a way that works when the address already holds lamports. |
+| 5 | Medium | Anyone could close a finished hunt's logbooks, board and treasure. The rent went back to its owners, but the record the audit relies on was gone. | `close_logbook` needs the owner's signature. `close_board` and `close_treasure` need the creator's. |
+| 6 | Medium | A finalized hunt could be delegated to the rollup again, which would block a pending payout if the settlement action had failed. | `delegate_hunt` accepts only a hunt that is still `Created`. |
+| 7 | Low | The escrow that pays for the settlement action could not be recovered. | `reclaim_escrow` returns it to the creator once the hunt is settled, or if it was never delegated. |
+| 8 | Low | Start time and deadline were unbounded. | `create_hunt` requires at least 120 s of play, a start at most 7 days ahead and at most 30 days of play. |
+
+Each fix has a devnet test: `tests/recovery.test.ts` covers findings 1, 2, 4, 5, 6, 7 and the first two bounds of 8, and `tests/author-sealed.test.ts` covers finding 3 by splicing a real ciphertext into a second hunt. The transactions are in [PROOF.md](PROOF.md), section 9. The 30-day cap is enforced in code but no test exercises it.
+
+Limits that remain, by design or for now:
+
+- **A player can still join after a private strike, until the finished hunt reaches Solana.** `join` reads the hunt's Solana copy, which stays live until `finalize` commits it. A late entrant's fee then goes into a pot that is already won. The SDK ticks and finalizes right after a strike to keep this window short: in the three-bot hunt the payout landed on Solana about one second after the winning sounding.
+- **`settle` needs a rent-exempt recipient.** The payout goes straight into the winner's and the creator's wallets, so each must stay rent-exempt afterwards. Solana refuses a payout too small to make an empty wallet rent-exempt.
+- **In Author mode the creator knows the location.** The encrypted seal keeps it off Solana, not away from its author.
 
 ## Honest limits
 
-- **Devnet only.** Nothing here has run on mainnet, and the program has not been audited.
+- **Devnet only.** Nothing here has run on mainnet. The program has not been audited by a third party; our own review is under [Security review](#security-review).
 - **The TEE validator is trusted.** If MagicBlock's validator or its enclave were compromised, or misapplied its access control, the location would leak. We tested what an outside caller can do through the RPC and its websocket (`getAccountInfo` with and without `dataSlice`, `getMultipleAccounts`, `getProgramAccounts`, `getBalance`, `getSignaturesForAddress`, `getTransaction`, `getSignatureStatuses`, `getBlock`, `simulateTransaction`, `accountSubscribe`, `programSubscribe`, `logsSubscribe`). We did not check enclave attestation or the validator's host.
 - **What an observer still learns.** These are the limits our confidentiality suite records:
   - sounding time and position are public by design;
@@ -250,6 +297,7 @@ The general lesson for anyone building on a private rollup: every instruction's 
 - **A strike is public only after the next `tick`.** Until then other players can keep sounding. In the three-bot hunt a rival took another sounding 7 slots after the winning strike. Only the first strike is recorded, so a later one can't take the win.
 - **After the end, everything opens.** The location, salt and logbooks are published for the audit, and the rollup's transaction history for a hunt that has been opened then reads in full.
 - **Cranks.** The validator's task scheduler (`ScheduleTask`, deprecated in the SDK we build on) is the path that works. We register with Hydra as well. Its crank accounts are valid, and a manual trigger ran our tick, but nothing triggers ephemeral Hydra cranks on the TEE validator at priority tip 0: one Hydra crank was 515,180 slots overdue with 0 executions. Scheduled ticks keep firing for a while after a hunt has left the rollup, and they fail harmlessly. With no crank at all, any client can call `tick`, and the SDK and the bots do so after a strike or a deadline.
+- **A finished hunt's Hunt and Vault accounts stay open.** We keep them on purpose: they are the permanent on-chain audit record (commitment, revealed location and salt, winner, prize and entry accounting). After a hunt is settled and cleaned up, each keeps exactly its rent-exempt minimum: 3291840 lamports (about 0.0033 SOL) for the Hunt and 949960 lamports (about 0.00095 SOL) for the Vault, as measured on two settled hunts on devnet. Everything else a hunt holds has a way out: `settle`, `refund_entry`, `close_logbook`, `close_board`, `close_treasure`, `cancel_hunt` and `reclaim_escrow`. Rollup and commit fees are spent, not held.
 - **Settlement fallback.** If the Magic Action never arrived, anyone could call `settle` directly once the hunt is back on Solana. In every hunt in our logs the action paid first, so the direct path has only been exercised as a refusal while the hunt was still delegated.
 - **Latency.** About 10 ms is the rollup's block interval, not what a player feels. From our client, an `open_hunt` was confirmed after 962 ms in one timed run and after 2239 ms in another.
 - **Limits.** 64 players per hunt, 64 soundings per ship, the last 128 pins on the board. The largest hunt we have played on devnet had three players.
@@ -260,7 +308,7 @@ The general lesson for anyone building on a private rollup: every instruction's 
 
 - **Settlement callbacks** that return the payout receipt into the rollup: not shipped. We dropped them from this version.
 - **Hydra crank:** the validator has not run our crank with a zero priority tip, and we haven't tried a non-zero tip. Until then the legacy scheduler does the work.
-- **Mainnet, an audit and a verified build.**
+- **Mainnet, a third-party audit and a verified build.**
 - **Token prizes.** Prizes and entry fees are SOL only.
 - **Bigger hunts.** More than 64 players needs a larger board, or more than one.
 

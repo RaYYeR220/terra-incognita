@@ -27,15 +27,17 @@ This prints `Verdict: VERIFIED`: 3 logbooks, 25 soundings re-measured, 0 mismatc
 | What | Link |
 | --- | --- |
 | Program | [`37s4Ax37…eh2Z1v`](https://explorer.solana.com/address/37s4Ax372B3AJkcBe7Cp3RA6Z4ns7Zx2PVbgU1eh2Z1v?cluster=devnet) |
-| Final program upgrade | [`2zrZLBL3…`](https://explorer.solana.com/tx/2zrZLBL3Ui2yZatbvLwNi64VRnBpeyRoMMAP6SyQw78Z6udkzXnWsiAjKGjpFPTJXsda2Ncx1ne7GuDD4iHHDWiA?cluster=devnet) |
+| Current program: the upgrade with our security review's fixes | [`3BaZm63v…`](https://explorer.solana.com/tx/3BaZm63vrGyinGvTCYbW8Ht2zFpbJwgqp4xr3a644me8BRafoba9ss5HWZ94ZbF1R3BtUCRrEGbJPhuryHXfvVMf?cluster=devnet) |
 | Three-bot VRF hunt | [`FZM2qBDX…`](https://explorer.solana.com/address/FZM2qBDXCcRTP5gCzT1LgehJtuggUQw4SqZDwzDP6frY?cluster=devnet) |
 | Its commitment, on Solana before play | [`74QDZ6Me…`](https://explorer.solana.com/tx/74QDZ6MeCTeQ8wig6EdnEnZjFB8MbYCZfxSRvBs2TgAKUxcdii8VE5T2kiQhkpdkqouosSmLkhoTACRQBKcZkeh?cluster=devnet) |
 | Its payout: commit + undelegate + Magic Action `settle` in one transaction paid by the validator | [`2KRBZjBp…`](https://explorer.solana.com/tx/2KRBZjBpdfvCZUMwwoxqTAjjvgWptNRhi2iYsW1pePETGsB5ohWsQaMH65iDDVwokqVo3VGcReJxKDsZVjnTkeuE?cluster=devnet) |
 | Hunt closed by scheduled ticks, closest sounding wins: payout | [`2gonGqGg…`](https://explorer.solana.com/tx/2gonGqGg2MWqkESTdjKSAsuGmffz1bdVeDj5jtrQT8pA65izMvqjtdTVtZFhu4EEDHbCGJXM6vpG69STxqiEvHMG?cluster=devnet) |
 | Hunt with no client after launch: zone shrank, void, refunded by the scheduler | [`2S6E74sV…`](https://explorer.solana.com/tx/2S6E74sVnYkpgFDo2YdsJjLnd2M5qTL9fPNjFi7PZcw33eB92cvTYCNfCxUCWPuH8acV2Be1EPfPYBe6ZDTNBjgm?cluster=devnet) |
 | Author location delivered encrypted inside the delegation | [`ZSF9ix4W…`](https://explorer.solana.com/tx/ZSF9ix4WHB7dNMCJKTuj52CTNgwDNiADPaHLtKuDiRUTry1uL3uLr2495frN8BBbFuJzh7Kb2exA88oWj33NYqj?cluster=devnet) |
+| Void hunt: only the prize seed goes back to the creator… | [`5dNX6Ve9…`](https://explorer.solana.com/tx/5dNX6Ve97DgPZzncNnjWPqZXPmKgv7eQZq62F2LyyGuAKYTsqKgTRuDFEo7PaVHmSciiWwGmhvbPUzYkWZg1aFY4?cluster=devnet) |
+| …and each entrant reclaims their fee | [`2UawnazL…`](https://explorer.solana.com/tx/2UawnazLgkziWgsdmKs32GLH7XZb1QSeWw5bpSYpF4gUt81bdwawsnM3PrSd9tHWLvzTAfEpebYcwQemRm7g6nHb?cluster=devnet) |
 
-[PROOF.md](PROOF.md) has the full list, including rollup signatures and the exact read results.
+[PROOF.md](PROOF.md) has the full list, including rollup signatures and the exact read results. Section 9 covers our security review's fixes, including a replayed author seal refused inside the rollup.
 
 ## Where the interesting code is
 
@@ -45,7 +47,8 @@ This prints `Verdict: VERIFIED`: 3 logbooks, 25 soundings re-measured, 0 mismatc
 | `programs/terra_incognita/src/lib.rs`, `tick` | makes a strike public only from an earlier slot; runs under the validator's scheduler |
 | `programs/terra_incognita/src/lib.rs`, `reveal_and_release` | reveal, commit, undelegate and the `settle` action in one intent, paid and signed by the hunt PDA |
 | `programs/terra_incognita/src/lib.rs`, `open_hunt` / `seal_from_vrf` / `arm` | VRF request inside the rollup, the callback that touches only the treasure, the commitment |
-| `programs/terra_incognita/src/lib.rs`, `delegate_hunt_sealed` / `seal_from_action` | an author's location delivered as an encrypted post-delegation action |
+| `programs/terra_incognita/src/lib.rs`, `delegate_hunt_sealed` / `seal_from_action` | an author's location delivered as an encrypted post-delegation action, bound to its hunt |
+| `programs/terra_incognita/src/lib.rs`, `settle` / `refund_entry` / `cancel_hunt` | where the money goes, including void hunts and hunts that never go live |
 | `programs/terra_incognita/src/blind.rs` | branch-free selections behind volatile loads, so compute use can't depend on the secret |
 | `programs/terra_incognita/src/geo.rs` | integer geometry, no trigonometry; its tests load the shared vectors |
 | `packages/core/vectors/geometry.json` | reference vectors shared by Rust and TypeScript: bands, pairs, travel, unit vectors, VRF derivations, zone centres |
@@ -56,17 +59,19 @@ This prints `Verdict: VERIFIED`: 3 logbooks, 25 soundings re-measured, 0 mismatc
 | `packages/hunter/src/belief.ts`, `solver.ts` | the solver: sampled belief, expected time to a strike, travel-aware choice |
 | `tests/simulation-oracle.test.ts` | simulations at the treasure and far away must give the same errors and need the same compute |
 | `tests/confidentiality.test.ts` | everything an outside observer can ask the rollup, and what comes back |
+| `tests/recovery.test.ts` | void refunds, hunts that never go live, pre-funded logbook addresses, who may close what |
 
 ## Tests
 
 | Suite | Command | Result |
 | --- | --- | --- |
 | core (geometry, derivations, audit) | `npm test -w @terra-incognita/core` | 100 |
-| sdk (decoders, instructions, sealed actions) | `npm test -w @terra-incognita/sdk` | 32, plus 1 devnet test (`TERRA_DEVNET=1`) |
+| sdk (decoders, instructions, sealed actions) | `npm test -w @terra-incognita/sdk` | 33, plus 3 devnet tests (`TERRA_DEVNET=1`) |
 | hunter (solver, simulator, bots) | `npm test -w @terra-incognita/hunter` | 77, plus 1 devnet test (`TERRA_DEVNET=1`) |
 | program unit tests (Rust) | `npm run test:program` | 27, including the parity check against 1548 shared vector values |
-| program on devnet | `npm run build:program && npm run test:devnet` | lifecycle 12/12, simulation-oracle 6/6, confidentiality 4/4, author-sealed 3/3, vrf-hunt 7/7, negative 7/7, crank 3/3, sealing 3/3 |
+| program on devnet, current program | `npm run build:program && npm run test:devnet` | recovery 8/8, lifecycle 12/12, author-sealed 4/4, simulation-oracle 6/6, negative 7/7 |
+| program on devnet, earlier upgrades | same | confidentiality 4/4 (10:35 UTC upgrade); vrf-hunt 7/7, crank 3/3, sealing 3/3 (09:09 UTC upgrade) |
 
-The last four devnet suites ran on the previous upgrade, which differs from the final program only by the two sealed-path instructions. Run `npm run build:packages` before the package tests. The devnet suites need a funded devnet key at `ANCHOR_WALLET`.
+The suites in the last row have not been re-run since the self-audit fixes. Run `npm run build:packages` before the package tests. The devnet suites need a funded devnet key at `ANCHOR_WALLET`.
 
 What we don't claim is listed in [CLAIMS.md](CLAIMS.md).
